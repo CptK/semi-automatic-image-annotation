@@ -61,6 +61,7 @@ class ImageAnnotationGUI(ctk.CTk):
             idx: The index of the image to jump to.
         """
         self.annotation_store.jump_to(idx)
+        self.content.new_image()
         self.content.update()
         self.left_sidebar.update()
         self.right_sidebar.update()
@@ -68,6 +69,7 @@ class ImageAnnotationGUI(ctk.CTk):
     def next_image(self):
         """Move to the next image in the sequence."""
         self.annotation_store.next()
+        self.content.new_image()
         self.content.update()
         self.left_sidebar.update()
         self.right_sidebar.update()
