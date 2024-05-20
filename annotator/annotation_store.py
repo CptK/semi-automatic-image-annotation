@@ -81,11 +81,14 @@ class AnnotationStore:
     def init_image(self):
         """Initialize the current image with automatic annotation using the object detection model."""
         if self.model is not None:
-            img = Image.open(self.file_path)
-            res = self._detect_single(img)
-            self.annotations[self.current]["boxes"] = [r["box"] for r in res]
-            self.annotations[self.current]["labels"] = [r["label"] for r in res]
-            self.annotations[self.current]["auto_intialized"] = True
+            try:
+                img = Image.open(self.file_path)
+                res = self._detect_single(img)
+                self.annotations[self.current]["boxes"] = [r["box"] for r in res]
+                self.annotations[self.current]["labels"] = [r["label"] for r in res]
+                self.annotations[self.current]["auto_intialized"] = True
+            except Exception as e:
+                print(f"Failed to initialize image: {e}")
 
     def _detect_single(self, img):
         """Detect objects in a single image and return the results as a list of dictionaries.
