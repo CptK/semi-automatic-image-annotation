@@ -107,6 +107,7 @@ class SingleImage:
     
     def __dict__(self):
         return {
+            "file_path": self.path,
             "file_name": self.name,
             "boxes": self.boxes,
             "labels": self.labels,
@@ -156,8 +157,9 @@ class AnnotationStore:
         if not self.current.auto_intialized:
             self.current.init()
 
-    def save(self):
-        raise NotImplementedError
+    def save(self, path: str):
+        """Save the annotations to a JSON file."""
+        self.export(path, "json", False, 0.0)
 
     def export(self, path: str, format: Literal["csv", "json", "yolo"], only_ready: bool, train_split: float):
         """Export the annotations to a file in the specified format.
@@ -336,3 +338,33 @@ class AnnotationStore:
 
         with open(os.path.join(path, "data.yaml"), "w") as f:
             yaml.dump(data_yaml, f, default_flow_style=False, sort_keys=False)
+
+    def import_json(self, path: str, append: bool = False):
+        """Import annotations from a JSON file.
+
+        Args:
+            path: The path to the input JSON file.
+            append: If True, append the annotations to the existing dataset.
+        """
+        if not path.endswith(".json"):
+            raise ValueError("Import path must be a JSON file.")
+
+        with open(path, "r") as f:
+            data = json.load(f)
+
+        new_annotations = [
+            SingleImage(
+                a["file_path"],
+                a["file_name"],
+                self.model,
+                self.available_labels,
+                640,
+            ) for a in data
+        ]
+
+        if append:
+            self.annotations.extend(new_annotations)
+        else:
+            self.annotations = new_annotations
+            self.current_index = 0
+            self.jump_to(self.current_index)
