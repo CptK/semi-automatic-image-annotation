@@ -93,7 +93,7 @@ class LeftSidebar(ctk.CTkScrollableFrame):
                 text=name,
                 command=lambda i=i: self._main_frame.jump_to_image(i),
                 active=i == self.annotation_store.current,
-                ready=self.annotation_store.annotations[i]["marked_ready"],
+                ready=self.annotation_store.annotations[i].ready,
             )
             button.pack(fill="x", padx=5, pady=5)
             self.list_items.append(button)
@@ -103,5 +103,5 @@ class LeftSidebar(ctk.CTkScrollableFrame):
         for i, list_item in enumerate(self.list_items):
             list_item.update(
                 active=i == self.annotation_store.current,
-                ready=self.annotation_store.annotations[i]["marked_ready"],
+                ready=self.annotation_store.annotations[i].ready,
             )

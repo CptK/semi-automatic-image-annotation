@@ -118,6 +118,7 @@ class ExportPopup(ctk.CTkToplevel):
             self.destroy()
         except Exception as e:
             self.warn_msg.configure(text=str(e))
+            raise e
 
     def _update_split_value(self, value):
         """Update the train split value label."""
