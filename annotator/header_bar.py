@@ -8,11 +8,12 @@ import customtkinter as ctk
 
 class ExportPopup(ctk.CTkToplevel):
     """Export popup window for the annotator application.
-    
+
     Args:
         master: The parent widget.
         export_func: The export function to call with the export options.
     """
+
     def __init__(self, master, export_func, **kwargs):
         super().__init__(master, **kwargs)
         self.title("Export Options")

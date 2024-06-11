@@ -2,22 +2,21 @@
 
 import customtkinter as ctk
 
-from annotator.annotation_store import AnnotationStore
+from annotator.controller import Controller
 
 
 class RightSidebarList(ctk.CTkScrollableFrame):
     """List of labels for the right sidebar.
-    
+
     Args:
         master: The parent widget.
         annotation_store: The annotation store object to use for image data.
         main_frame: The main frame object.
     """
 
-    def __init__(self, master, annotation_store: AnnotationStore, main_frame, **kwargs):
+    def __init__(self, master, controller: Controller, **kwargs):
         super().__init__(master, **kwargs)
-        self._main_frame = main_frame
-        self.annotation_store = annotation_store
+        self.controller = controller
         self.update()
 
     def update(self):
@@ -25,8 +24,8 @@ class RightSidebarList(ctk.CTkScrollableFrame):
         for widget in self.winfo_children():
             widget.destroy()
 
-        for i, label in enumerate(self.annotation_store.labels):
-            label = label.lower() if label.lower() in self.annotation_store.available_labels else "none"
+        for i, label in enumerate(self.controller.current_labels()):
+            label = label.lower() if label.lower() in self.controller.available_labels() else "none"
 
             # add ComboBox for each label
             frame = ctk.CTkFrame(self)
@@ -35,7 +34,7 @@ class RightSidebarList(ctk.CTkScrollableFrame):
             # Add ComboBox for each label inside the frame
             label_option = ctk.CTkComboBox(
                 frame,
-                values=self.annotation_store.available_labels,
+                values=self.controller.available_labels(),
                 command=lambda choice, idx=i: self.change_label(choice, idx),
             )
             label_option.set(label)
@@ -47,13 +46,11 @@ class RightSidebarList(ctk.CTkScrollableFrame):
 
     def change_label(self, label, idx):
         """Change the label for the given index."""
-        self.annotation_store.change_label(idx, label)
-        self._main_frame.redraw_content()
+        self.controller.change_label(idx, label)
 
     def delete(self, idx):
         """Delete the label for the given index."""
-        self.annotation_store.delete(idx)
-        self._main_frame.redraw_content()
+        self.controller.delete(idx)
         self.update()
 
 
@@ -65,15 +62,15 @@ class RightSidebar(ctk.CTkFrame):
         annotation_store: The annotation store object to use for image data.
     """
 
-    def __init__(self, master, annotation_store: AnnotationStore, **kwargs):
+    def __init__(self, master, controller: Controller, **kwargs):
         super().__init__(master, **kwargs)
         self._main_frame = master
-        self.annotation_store = annotation_store
+        self.controller = controller
         self.setup()
 
     def setup(self):
         """Set up the right sidebar layout."""
-        next_button = ctk.CTkButton(self, text="Next", command=self._main_frame.next_image)
+        next_button = ctk.CTkButton(self, text="Next", command=self.controller.next)
         next_button.pack(pady=(20, 0), padx=5, fill="x")
 
         skip_button = ctk.CTkButton(self, text="Skip")
@@ -81,13 +78,13 @@ class RightSidebar(ctk.CTkFrame):
 
         # add checkbox and label for marking the image as ready
         ready_var = ctk.BooleanVar()
-        ready_var.set(self.annotation_store.ready)
+        ready_var.set(self.controller.ready())
         ready_checkbox = ctk.CTkCheckBox(
             self, text="Mark as ready", variable=ready_var, command=self.mark_ready
         )
         ready_checkbox.pack(pady=(10, 20), padx=5, fill="x")
 
-        self.item_list = RightSidebarList(self, self.annotation_store, self._main_frame)
+        self.item_list = RightSidebarList(self, self.controller)
         self.item_list.pack(fill="both", expand=True)
 
     def update(self):
@@ -96,5 +93,4 @@ class RightSidebar(ctk.CTkFrame):
 
     def mark_ready(self):
         """Mark the current image as ready."""
-        self.annotation_store.mark_ready()
-        self._main_frame.next_image()
+        self.controller.mark_ready()

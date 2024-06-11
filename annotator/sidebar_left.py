@@ -2,12 +2,12 @@
 
 import customtkinter as ctk
 
-from annotator.annotation_store import AnnotationStore
+from annotator.controller import Controller
 
 
 class ListButton(ctk.CTkButton):
     """Button for the left sidebar list items.
-    
+
     Args:
         master: The parent widget.
         text: The text to display on the button.
@@ -29,7 +29,7 @@ class ListButton(ctk.CTkButton):
 
     def update(self, active: bool):
         """Update the button appearance based on the active status.
-        
+
         Args:
             active: Whether the button is currently active.
         """
@@ -78,22 +78,21 @@ class LeftSidebar(ctk.CTkScrollableFrame):
         annotation_store: The annotation store object to use for image data.
     """
 
-    def __init__(self, master, annotation_store: AnnotationStore, **kwargs):
+    def __init__(self, master, controller: Controller, **kwargs):
         super().__init__(master, **kwargs)
-        self._main_frame = master
-        self.annotation_store = annotation_store
+        self.controller = controller
         self.setup()
 
     def setup(self):
         """Set up the left sidebar list items."""
         self.list_items: list[ListItem] = []
-        for i, name in enumerate(self.annotation_store.image_names):
+        for i, name in enumerate(self.controller.image_names()):
             button = ListItem(
                 self,
                 text=name,
-                command=lambda i=i: self._main_frame.jump_to_image(i),
-                active=i == self.annotation_store.current,
-                ready=self.annotation_store.annotations[i].ready,
+                command=lambda i=i: self.controller.jump_to(i),
+                active=i == self.controller.current_index(),
+                ready=self.controller[i].ready,
             )
             button.pack(fill="x", padx=5, pady=5)
             self.list_items.append(button)
@@ -102,6 +101,6 @@ class LeftSidebar(ctk.CTkScrollableFrame):
         """Update the left sidebar list items."""
         for i, list_item in enumerate(self.list_items):
             list_item.update(
-                active=i == self.annotation_store.current,
-                ready=self.annotation_store.annotations[i].ready,
+                active=i == self.controller.current_index(),
+                ready=self.controller[i].ready,
             )

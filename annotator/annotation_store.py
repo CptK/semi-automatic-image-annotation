@@ -3,8 +3,8 @@
 import json
 import os
 from typing import Literal
-import yaml
 
+import yaml
 from PIL import Image
 
 
@@ -31,11 +31,13 @@ class SingleImage:
         img_size: The size to which to resize the image for automatic annotation.
     """
 
-    def __init__(self, path: str, name: str, model, available_labels: list[str], img_size: tuple[int, int] | int = 640) -> None:
+    def __init__(
+        self, path: str, name: str, model, available_labels: list[str], img_size: tuple[int, int] | int = 640
+    ) -> None:
         self.path = path
         self.name = name
-        self.boxes = []
-        self.labels = []
+        self.boxes: list = []
+        self.labels: list = []
         self.ready = False
         self.skip = False
         self.auto_intialized = False
@@ -56,7 +58,7 @@ class SingleImage:
                 self.auto_intialized = True
             except Exception as e:
                 print(f"Failed to initialize image: {e}")
-    
+
     def _detect_single(self, img):
         """Detect objects in a single image and return the results as a list of dictionaries.
 
@@ -86,7 +88,7 @@ class SingleImage:
                 }
             )
         return res
-    
+
     def mark_ready(self):
         """Mark the image as ready for export."""
         self.ready = True
@@ -104,7 +106,7 @@ class SingleImage:
         """Add a bounding box to the image."""
         self.boxes.append(box)
         self.labels.append(label)
-    
+
     def __dict__(self):
         return {
             "file_path": self.path,
@@ -140,16 +142,16 @@ class AnnotationStore:
 
     def next(self):
         """Move to the next image in the dataset. If the end of the dataset is reached, do nothing.
-        
+
         If the next image has not been seen before, initialize it with automatic annotation.
         """
-        self.jump_to(max(self.current + 1, len(self.annotations) - 1))
+        self.jump_to(min(self.current_index + 1, len(self) - 1))
 
     def jump_to(self, index: int):
         """Jump to a specific image in the dataset.
 
         If the image has not been seen before, initialize it with automatic annotation.
-        
+
         Args:
             index: The index of the image to jump to.
         """
@@ -190,7 +192,7 @@ class AnnotationStore:
             The index of the annotation with the specified file name, or None if not found.
         """
         for i, a in enumerate(self.annotations):
-            if a["file_name"] == name:
+            if a.name == name:
                 return i
         return None
 
@@ -239,10 +241,18 @@ class AnnotationStore:
     def image_names(self):
         """A list of file names of all images in the dataset."""
         return [a.name for a in self.annotations]
-    
+
     @property
     def to_json(self):
         return [a.__dict__() for a in self.annotations]
+
+    def __getitem__(self, idx: int) -> SingleImage:
+        """Get the image at the given index."""
+        return self.annotations[idx]
+
+    def __len__(self) -> int:
+        """The number of images in the dataset."""
+        return len(self.annotations)
 
     def _export_csv(self, path: str, data: list[SingleImage], delimiter: str = ";"):
         """Export the annotations to a CSV file.
@@ -349,7 +359,7 @@ class AnnotationStore:
         if not path.endswith(".json"):
             raise ValueError("Import path must be a JSON file.")
 
-        with open(path, "r") as f:
+        with open(path) as f:
             data = json.load(f)
 
         new_annotations = [
@@ -359,7 +369,8 @@ class AnnotationStore:
                 self.model,
                 self.available_labels,
                 640,
-            ) for a in data
+            )
+            for a in data
         ]
 
         if append:
