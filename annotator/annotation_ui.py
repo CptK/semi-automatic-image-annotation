@@ -51,9 +51,6 @@ class ImageAnnotationGUI(UI):
 
         self.content = Content(self, self.controller, width=640, height=640)
         self.content.pack()
-
-        self.left_sidebar.update()
-        self.right_sidebar.update()
         self.content.update()
 
     def refresh_all(self):
