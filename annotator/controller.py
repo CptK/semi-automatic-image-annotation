@@ -44,6 +44,10 @@ class Controller:
         """The absolute file path of the *current* image."""
         return self._store.file_path
 
+    def current_image_size(self):
+        """The size of the *current* image."""
+        return self._store.image_size
+
     def ready(self):
         """Whether the *current* image has been marked as ready for export."""
         return self._store.ready

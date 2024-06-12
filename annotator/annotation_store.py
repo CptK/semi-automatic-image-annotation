@@ -8,6 +8,49 @@ import yaml
 from PIL import Image
 
 
+class DetectionModel:
+
+    def __init__(self, model, available_labels: list[str], input_size: tuple[int, int] = (640, 640)):
+        self.model = model
+        self.available_labels = available_labels
+        self.input_size = input_size
+
+    def __call__(self, img: Image.Image):
+        """Detect objects in a single image and return the results as a list of dictionaries.
+
+        Args:
+            img: The image to process.
+
+        Returns:
+            A list of dictionaries, each containing the keys 'box' for the bounding box coordinates, 'boxn'
+            for the normalized bounding box coordinates, 'label' for the class label, and 'confidence' for the
+            detection confidence.
+        """
+        img = img.resize(self.input_size)
+        results = self.model(img)[0]
+        labels = results.names
+        boxes = results.boxes
+        res = []
+        for box in boxes:
+            label = labels[box.cls.item()]
+            if label not in self.available_labels:
+                label = "none"
+
+            # convert [x1, y1, x2, y2] to [center_x, center_y, width, height], all normalized to [0, 1]
+            boxn = box.xyxyn[0].tolist()
+            boxn = [(boxn[0] + boxn[2]) / 2, (boxn[1] + boxn[3]) / 2, boxn[2] - boxn[0], boxn[3] - boxn[1]]
+
+            res.append(
+                {
+                    "box": box.xyxy[0].tolist(),
+                    "boxn": boxn,
+                    "label": label,
+                    "confidence": box.conf.item(),
+                }
+            )
+        return res
+
+
 class SingleImage:
     """A class for storing annotations for a single image.
 
@@ -21,7 +64,8 @@ class SingleImage:
     Attributes:
         path: The path to the image file. (including the file name)
         name: The file name of the image.
-        boxes: A list of bounding boxes in the image.
+        boxes: A list of bounding boxes in the image. Each box is represented as a list of four entries
+            [center_x, center_y, width, height], where all values are normalized to the range [0, 1].
         labels: A list of class labels corresponding to the bounding boxes.
         ready: Whether the image has been marked as ready for export.
         skip: Whether the image should be skipped during annotation.
@@ -31,9 +75,7 @@ class SingleImage:
         img_size: The size to which to resize the image for automatic annotation.
     """
 
-    def __init__(
-        self, path: str, name: str, model, available_labels: list[str], img_size: tuple[int, int] | int = 640
-    ) -> None:
+    def __init__(self, path: str, name: str) -> None:
         self.path = path
         self.name = name
         self.boxes: list = []
@@ -41,53 +83,22 @@ class SingleImage:
         self.ready = False
         self.skip = False
         self.auto_intialized = False
-        self.model = model
-        self.available_labels = available_labels
-        self.img_size = img_size if isinstance(img_size, tuple) else (img_size, img_size)
+        img = Image.open(self.path)
+        self.img_size = img.size
 
-    def init(self):
+    def init(self, model: DetectionModel | None):
         """Initialize the image with automatic annotation using the object detection model."""
         if self.auto_intialized:
             return
-        if self.model is not None:
+        if model is not None:
             try:
                 img = Image.open(self.path)
-                res = self._detect_single(img)
-                self.boxes = [r["box"] for r in res]
+                res = model(img)
+                self.boxes = [r["boxn"] for r in res]
                 self.labels = [r["label"] for r in res]
                 self.auto_intialized = True
             except Exception as e:
                 print(f"Failed to initialize image: {e}")
-
-    def _detect_single(self, img):
-        """Detect objects in a single image and return the results as a list of dictionaries.
-
-        Args:
-            img: The image to process.
-
-        Returns:
-            A list of dictionaries, each containing the keys 'box' for the bounding box coordinates, 'boxn'
-            for the normalized bounding box coordinates, 'label' for the class label, and 'confidence' for the
-            detection confidence.
-        """
-        img = img.resize((640, 640))
-        results = self.model(img)[0]
-        labels = results.names
-        boxes = results.boxes
-        res = []
-        for box in boxes:
-            label = labels[box.cls.item()]
-            if label not in self.available_labels:
-                label = "none"
-            res.append(
-                {
-                    "box": box.xyxy[0].tolist(),
-                    "boxn": box.xyxyn[0].tolist(),
-                    "label": label,
-                    "confidence": box.conf.item(),
-                }
-            )
-        return res
 
     def mark_ready(self):
         """Mark the image as ready for export."""
@@ -129,13 +140,11 @@ class AnnotationStore:
 
     def __init__(self, data_path: str, model, available_labels: list[str]):
         img_files = [f for f in os.listdir(data_path)]
-        self.model = model
+        self.model = DetectionModel(model, available_labels)
         self.data_path = data_path
         self.available_labels = available_labels
 
-        self.annotations = [
-            SingleImage(os.path.join(data_path, f), f, model, available_labels, 640) for f in img_files
-        ]
+        self.annotations = [SingleImage(os.path.join(data_path, f), f) for f in img_files]
 
         self.current_index: int = 0
         self.jump_to(self.current_index)
@@ -157,7 +166,7 @@ class AnnotationStore:
         """
         self.current_index = index
         if not self.current.auto_intialized:
-            self.current.init()
+            self.current.init(self.model)
 
     def save(self, path: str):
         """Save the annotations to a JSON file."""
@@ -246,6 +255,10 @@ class AnnotationStore:
     def to_json(self):
         return [a.__dict__() for a in self.annotations]
 
+    @property
+    def image_size(self):
+        return self.current.img_size
+
     def __getitem__(self, idx: int) -> SingleImage:
         """Get the image at the given index."""
         return self.annotations[idx]
@@ -266,11 +279,14 @@ class AnnotationStore:
             raise ValueError("Export path must be a CSV file.")
 
         with open(path, "w") as f:
+            f.write(
+                f"file_name{delimiter}center_x{delimiter}center_y{delimiter}width{delimiter}height{delimiter}label\n"
+            )
             for a in data:
                 for box, label in zip(a.boxes, a.labels):
-                    x1, y1, x2, y2 = box
+                    center_x, center_y, width, height = box
                     f.write(
-                        f"{a.name}{delimiter}{x1}{delimiter}{y1}{delimiter}{x2}{delimiter}{y2}{delimiter}{label}\n"
+                        f"{a.name}{delimiter}{center_x}{delimiter}{center_y}{delimiter}{width}{delimiter}{height}{delimiter}{label}\n"
                     )
 
     def _export_json(self, path: str):
@@ -331,13 +347,7 @@ class AnnotationStore:
 
             with open(os.path.join(path, split, "labels", f"{i}.txt"), "w") as f:
                 for box, label in zip(data.boxes, data.labels):
-                    x1, y1, x2, y2 = box
-
-                    # get the center of the box in range 0-1
-                    x_center = (x1 + x2) / (2 * 640)
-                    y_center = (y1 + y2) / (2 * 640)
-                    width = (x2 - x1) / 640
-                    height = (y2 - y1) / 640
+                    x_center, y_center, width, height = box
 
                     # write the label and the normalized box coordinates
                     f.write(f"{self.available_labels.index(label)} {x_center} {y_center} {width} {height}\n")
@@ -358,10 +368,7 @@ class AnnotationStore:
         new_annotations = [
             SingleImage(
                 a["file_path"],
-                a["file_name"],
-                self.model,
-                self.available_labels,
-                640,
+                a["file_name"]
             )
             for a in data
         ]
