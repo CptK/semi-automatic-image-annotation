@@ -29,10 +29,16 @@ class ImageAnnotationGUI(UI):
         >>> gui.mainloop()
     """
 
+    INITIAL_WIDTH = 1200
+    INITIAL_HEIGHT = 800
+
+    HEADER_BAR_HEIGHT = 50
+    SIDEBAR_WIDTH = 200
+
     def __init__(self, controller: Controller):
         super().__init__()
         self.title("YOLO Image Annotation Tool")
-        self.geometry("1200x800")
+        self.geometry(f"{self.INITIAL_WIDTH}x{self.INITIAL_HEIGHT}")
 
         self.controller = controller
 
@@ -40,18 +46,21 @@ class ImageAnnotationGUI(UI):
 
     def setup_gui(self):
         """Set up the GUI layout."""
-        self.header = HeaderBar(self, self.controller.export)
+        self.header = HeaderBar(self, self.controller.export, height=self.HEADER_BAR_HEIGHT)
         self.header.pack(fill="x", ipadx=10, ipady=10, side="top")
 
-        self.left_sidebar = LeftSidebar(self, self.controller, width=200)
+        self.left_sidebar = LeftSidebar(self, self.controller, width=self.SIDEBAR_WIDTH)
         self.left_sidebar.pack(fill="y", side="left")
 
-        self.right_sidebar = RightSidebar(self, self.controller, width=200)
+        self.right_sidebar = RightSidebar(self, self.controller, width=self.SIDEBAR_WIDTH)
         self.right_sidebar.pack(fill="y", side="right")
 
-        self.content = Content(self, self.controller, width=640, height=640)
+        self.content = Content(
+            self,
+            self.controller,
+            (self.INITIAL_WIDTH - 2 * self.SIDEBAR_WIDTH, self.INITIAL_HEIGHT - self.HEADER_BAR_HEIGHT),
+        )
         self.content.pack()
-        self.content.update()
 
     def refresh_all(self):
         """Refresh all GUI elements."""
