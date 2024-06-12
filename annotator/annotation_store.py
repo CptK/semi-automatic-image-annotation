@@ -302,41 +302,8 @@ class AnnotationStore:
         os.makedirs(os.path.join(path, "test", "images"), exist_ok=True)
         os.makedirs(os.path.join(path, "test", "labels"), exist_ok=True)
 
-        for i, data in enumerate(train):
-            img = Image.open(os.path.join(self.data_path, data.name))
-            img = img.resize((640, 640))
-            img.save(os.path.join(path, "train", "images", f"{i}.jpg"))
-
-            with open(os.path.join(path, "train", "labels", f"{i}.txt"), "w") as f:
-                for box, label in zip(data.boxes, data.labels):
-                    x1, y1, x2, y2 = box
-
-                    # get the center of the box in range 0-1
-                    x_center = (x1 + x2) / (2 * 640)
-                    y_center = (y1 + y2) / (2 * 640)
-                    width = (x2 - x1) / 640
-                    height = (y2 - y1) / 640
-
-                    # write the label and the normalized box coordinates
-                    f.write(f"{self.available_labels.index(label)} {x_center} {y_center} {width} {height}\n")
-
-        for i, data in enumerate(test):
-            img = Image.open(os.path.join(self.data_path, data.name))
-            img = img.resize((640, 640))
-            img.save(os.path.join(path, "test", "images", f"{i}.jpg"))
-
-            with open(os.path.join(path, "test", "labels", f"{i}.txt"), "w") as f:
-                for box, label in zip(data.boxes, data.labels):
-                    x1, y1, x2, y2 = box
-
-                    # get the center of the box in range 0-1
-                    x_center = (x1 + x2) / (2 * 640)
-                    y_center = (y1 + y2) / (2 * 640)
-                    width = (x2 - x1) / 640
-                    height = (y2 - y1) / 640
-
-                    # write the label and the normalized box coordinates
-                    f.write(f"{self.available_labels.index(label)} {x_center} {y_center} {width} {height}\n")
+        self._process_yolo(path, train, "train")
+        self._process_yolo(path, test, "test")
 
         # create a yaml config file
         data_yaml = {
@@ -348,6 +315,32 @@ class AnnotationStore:
 
         with open(os.path.join(path, "data.yaml"), "w") as f:
             yaml.dump(data_yaml, f, default_flow_style=False, sort_keys=False)
+
+    def _process_yolo(self, path: str, raw_data: list[SingleImage], split: str):
+        """Process the annotations for the YOLO format.
+
+        Args:
+            path: The path to the output directory.
+            raw_data: The list of annotations to process.
+            split: The split to process (train or test).
+        """
+        for i, data in enumerate(raw_data):
+            img = Image.open(os.path.join(self.data_path, data.name))
+            img = img.resize((640, 640))
+            img.save(os.path.join(path, split, "images", f"{i}.jpg"))
+
+            with open(os.path.join(path, split, "labels", f"{i}.txt"), "w") as f:
+                for box, label in zip(data.boxes, data.labels):
+                    x1, y1, x2, y2 = box
+
+                    # get the center of the box in range 0-1
+                    x_center = (x1 + x2) / (2 * 640)
+                    y_center = (y1 + y2) / (2 * 640)
+                    width = (x2 - x1) / 640
+                    height = (y2 - y1) / 640
+
+                    # write the label and the normalized box coordinates
+                    f.write(f"{self.available_labels.index(label)} {x_center} {y_center} {width} {height}\n")
 
     def import_json(self, path: str, append: bool = False):
         """Import annotations from a JSON file.
