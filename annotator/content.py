@@ -247,7 +247,8 @@ class Content(ctk.CTkFrame):
                 return
             
         self.state = self.EventState.DRAWING
-        pass
+        
+        # self.bboxes.append(BoundingBox(self.canvas, (event.x, event.y, event.x, event.y), "none", lambda: None, BOX_COLOR))
 
     def _on_mouse_drag(self, event):
         if self.state == self.EventState.RESIZING:
@@ -263,4 +264,3 @@ class Content(ctk.CTkFrame):
         elif self.state == self.EventState.DRAWING:
             pass
         self.state = self.EventState.IDLE
-        pass
