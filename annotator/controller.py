@@ -79,6 +79,12 @@ class Controller:
         self._store.change_label(idx, label)
         self._view.redraw_content()  # type: ignore
 
+    def change_box(self, idx: int, box: Any, redraw: bool = True):
+        """Change the bounding box for the given index."""
+        self._store.change_box(idx, box)
+        if redraw:
+            self._view.redraw_content()  # type: ignore
+
     def delete(self, idx: int):
         """Delete the label for the given index."""
         self._store.delete(idx)

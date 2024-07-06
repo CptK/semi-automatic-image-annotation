@@ -221,6 +221,10 @@ class AnnotationStore:
         """Add a bounding box to the *current* image."""
         self.current.add_box(box, label)
 
+    def change_box(self, idx, box):
+        """Change the coordinates of a bounding box in the *current* image."""
+        self.current.boxes[idx] = box
+
     @property
     def current(self) -> SingleImage:
         """The index of the *current* image in the dataset."""
