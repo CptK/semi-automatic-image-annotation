@@ -4,8 +4,8 @@ import json
 import os
 from typing import Literal
 
-import yaml
 from PIL import Image
+import yaml
 
 
 class DetectionModel:
@@ -369,13 +369,7 @@ class AnnotationStore:
         with open(path) as f:
             data = json.load(f)
 
-        new_annotations = [
-            SingleImage(
-                a["file_path"],
-                a["file_name"]
-            )
-            for a in data
-        ]
+        new_annotations = [SingleImage(a["file_path"], a["file_name"]) for a in data]
 
         if append:
             self.annotations.extend(new_annotations)

@@ -1,6 +1,7 @@
-import customtkinter as ctk
+from collections.abc import Callable
 from tkinter import TclError
 
+import customtkinter as ctk
 
 RESIZE_CURSORS = {
     "nw": "top_left_corner",
@@ -21,13 +22,13 @@ class BoundingBox:
         canvas: ctk.CTkCanvas,
         box: tuple[int, int, int, int],
         label: str,
-        on_resize_end_callback: callable,
+        on_resize_end_callback: Callable | None = None,
         box_color: str = "red",
         label_color: str = "black",
         label_font_size: int = 12,
         label_font: str = "Helvetica",
         handle_size: int = 6,
-        handle_color: str = "red"
+        handle_color: str = "red",
     ) -> None:
         self.canvas = canvas
         self.box = box
@@ -40,19 +41,15 @@ class BoundingBox:
         self.label_font = label_font
         self.handle_size = handle_size
         self.handle_color = handle_color
-        self.handles = {}
+        self.handles: dict[str, int] = {}
         self.resizing = False
 
         self.draw()
         self._create_handles()
-    
+
     def draw(self):
         """Draw the bounding box on the canvas."""
-        self.rect = self.canvas.create_rectangle(
-            *self.box,
-            outline=self.box_color,
-            tags="bbox"
-        )
+        self.rect = self.canvas.create_rectangle(*self.box, outline=self.box_color, tags="bbox")
         self.label_id = self.canvas.create_text(
             self.box[0],
             self.box[1] - 16,
@@ -60,10 +57,10 @@ class BoundingBox:
             anchor="nw",
             fill=self.label_color,
             font=(self.label_font, self.label_font_size),
-            tags="bbox"
+            tags="bbox",
         )
 
-    def get_handle_at(self, x: int, y: int) -> str:
+    def get_handle_at(self, x: int, y: int) -> str | None:
         """Check if a handle is at the given coordinates."""
         for pos, handle in self.handles.items():
             bbox = self.canvas.bbox(handle)
@@ -80,7 +77,7 @@ class BoundingBox:
             "n": ((self.x1 + self.x2) / 2, self.y1),
             "e": (self.x2, (self.y1 + self.y2) / 2),
             "s": ((self.x1 + self.x2) / 2, self.y2),
-            "w": (self.x1, (self.y1 + self.y2) / 2)
+            "w": (self.x1, (self.y1 + self.y2) / 2),
         }
 
         for pos, (x, y) in center_positions.items():
@@ -91,7 +88,7 @@ class BoundingBox:
                 y + self.handle_size / 2,
                 outline=self.handle_color,
                 fill=self.handle_color,
-                tags="handle"
+                tags="handle",
             )
             self.handles[pos] = handle
 
@@ -147,7 +144,7 @@ class BoundingBox:
     def resize(self, x, y):
         if not self.resizing:
             return
-        
+
         if self.active_handle == "nw":
             self.x1 = x
             self.y1 = y
@@ -169,19 +166,18 @@ class BoundingBox:
         elif self.active_handle == "w":
             self.x1 = x
 
-        self.box = (self.x1, self.y1, self.x2, self.y2)  
+        self.box = (self.x1, self.y1, self.x2, self.y2)
         self.update(self.box)
 
     def end_resize(self):
-        if hasattr(self, 'active_handle'):
+        if hasattr(self, "active_handle"):
             del self.active_handle
         if not self.resizing:
             return
         self.resizing = False
         self.canvas.config(cursor="")
-        if self.on_resize_end_callback:
+        if self.on_resize_end_callback is not None:
             self.on_resize_end_callback()
 
     def get_box(self) -> tuple[int, int, int, int]:
         return self.x1, self.y1, self.x2, self.y2
-        

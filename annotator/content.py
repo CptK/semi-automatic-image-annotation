@@ -1,15 +1,15 @@
 """Content module for the annotator application."""
 
-from typing import List, Tuple
+from enum import Enum
+
 import customtkinter as ctk
 from PIL import Image, ImageTk
 
-from annotator.controller import Controller
 from annotator.bounding_box import BoundingBox
-
-from enum import Enum
+from annotator.controller import Controller
 
 BOX_COLOR = "red"
+
 
 class ImageContent(ImageTk.PhotoImage):
 
@@ -40,7 +40,7 @@ class ImageContent(ImageTk.PhotoImage):
             img_width = int(img_width * ratio)
 
         return img_width, img_height
-    
+
     def configure(self, available_width: int, available_height: int) -> None:
         self.available_width = available_width
         self.available_height = available_height
@@ -107,7 +107,7 @@ class ImageContent(ImageTk.PhotoImage):
             self.zoom_center = (self.img_width // 2, self.img_height // 2)
 
         self.zoom()
-        
+
 
 class Content(ctk.CTkFrame):
     """Main content frame for the annotator application.
@@ -186,7 +186,7 @@ class Content(ctk.CTkFrame):
         y2 = (y2 * zoom_level) - (zoom_center[1] - img_height / 2)
 
         return x1, y1, x2, y2
-    
+
     def canvas_to_relative_coords(self, canvas_coords):
         x1, y1, x2, y2 = canvas_coords
         img_width, img_height = self.image_content.img_width, self.image_content.img_height
@@ -212,9 +212,13 @@ class Content(ctk.CTkFrame):
         self.canvas.delete("handle")
         self.bboxes = []
 
-        for i, (box, label) in enumerate(zip(self.controller.current_boxes(), self.controller.current_labels())):
+        for i, (box, label) in enumerate(
+            zip(self.controller.current_boxes(), self.controller.current_labels())
+        ):
             box = self.relative_to_canvas_coords(box)
-            on_resize_end_callback = lambda idx=i: self.controller.change_box(idx, self.canvas_to_relative_coords(self.bboxes[idx].get_box()), redraw=False)
+            on_resize_end_callback = lambda idx=i: self.controller.change_box(  # noqa: E731
+                idx, self.canvas_to_relative_coords(self.bboxes[idx].get_box()), redraw=False
+            )
             bbox = BoundingBox(self.canvas, box, label, on_resize_end_callback, BOX_COLOR)
             self.bboxes.append(bbox)
 
@@ -245,9 +249,11 @@ class Content(ctk.CTkFrame):
                 bbox.start_resize(event, handle)
                 self.state = self.EventState.RESIZING
                 return
-            
+
         self.state = self.EventState.DRAWING
-        self.bboxes.append(BoundingBox(self.canvas, (event.x, event.y, event.x, event.y), "none", lambda: None, BOX_COLOR))
+        self.bboxes.append(
+            BoundingBox(self.canvas, (event.x, event.y, event.x, event.y), "none", lambda: None, BOX_COLOR)
+        )
         self.controller.add_box(self.canvas_to_relative_coords(self.bboxes[-1].get_box()), redraw=False)
         self.bboxes[-1].start_resize(event, "se")
 
@@ -263,7 +269,9 @@ class Content(ctk.CTkFrame):
             for bbox in self.bboxes:
                 bbox.end_resize()
         elif self.state == self.EventState.DRAWING:
-            on_resize_end_callback = lambda: self.controller.change_box(len(self.bboxes) - 1, self.canvas_to_relative_coords(self.bboxes[-1].get_box()), redraw=False)
+            on_resize_end_callback = lambda: self.controller.change_box(  # noqa: E731
+                len(self.bboxes) - 1, self.canvas_to_relative_coords(self.bboxes[-1].get_box()), redraw=False
+            )
             self.bboxes[-1].on_resize_end_callback = on_resize_end_callback
             self.bboxes[-1].end_resize()
         self.state = self.EventState.IDLE
