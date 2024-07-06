@@ -345,7 +345,7 @@ class AnnotationStore:
             split: The split to process (train or test).
         """
         for i, data in enumerate(raw_data):
-            img = Image.open(os.path.join(self.data_path, data.name))
+            img: Image.Image = Image.open(os.path.join(self.data_path, data.name))
             img = img.resize((640, 640))
             img.save(os.path.join(path, split, "images", f"{i}.jpg"))
 
