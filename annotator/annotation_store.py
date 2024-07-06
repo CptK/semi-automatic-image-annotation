@@ -4,8 +4,8 @@ import json
 import os
 from typing import Literal
 
-from PIL import Image
 import yaml
+from PIL import Image
 
 
 class DetectionModel:
