@@ -4,8 +4,8 @@ import json
 import os
 from typing import Literal
 
-import yaml
 from PIL import Image
+import yaml
 
 
 class DetectionModel:
@@ -221,6 +221,10 @@ class AnnotationStore:
         """Add a bounding box to the *current* image."""
         self.current.add_box(box, label)
 
+    def change_box(self, idx, box):
+        """Change the coordinates of a bounding box in the *current* image."""
+        self.current.boxes[idx] = box
+
     @property
     def current(self) -> SingleImage:
         """The index of the *current* image in the dataset."""
@@ -365,13 +369,7 @@ class AnnotationStore:
         with open(path) as f:
             data = json.load(f)
 
-        new_annotations = [
-            SingleImage(
-                a["file_path"],
-                a["file_name"]
-            )
-            for a in data
-        ]
+        new_annotations = [SingleImage(a["file_path"], a["file_name"]) for a in data]
 
         if append:
             self.annotations.extend(new_annotations)
