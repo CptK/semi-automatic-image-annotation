@@ -247,20 +247,23 @@ class Content(ctk.CTkFrame):
                 return
             
         self.state = self.EventState.DRAWING
-        
-        # self.bboxes.append(BoundingBox(self.canvas, (event.x, event.y, event.x, event.y), "none", lambda: None, BOX_COLOR))
+        self.bboxes.append(BoundingBox(self.canvas, (event.x, event.y, event.x, event.y), "none", lambda: None, BOX_COLOR))
+        self.controller.add_box(self.canvas_to_relative_coords(self.bboxes[-1].get_box()), redraw=False)
+        self.bboxes[-1].start_resize(event, "se")
 
     def _on_mouse_drag(self, event):
         if self.state == self.EventState.RESIZING:
             for bbox in self.bboxes:
                 bbox.resize(event.x, event.y)
         elif self.state == self.EventState.DRAWING:
-            pass
+            self.bboxes[-1].resize(event.x, event.y)
 
     def _on_mouse_release(self, event):
         if self.state == self.EventState.RESIZING:
             for bbox in self.bboxes:
                 bbox.end_resize()
         elif self.state == self.EventState.DRAWING:
-            pass
+            on_resize_end_callback = lambda: self.controller.change_box(len(self.bboxes) - 1, self.canvas_to_relative_coords(self.bboxes[-1].get_box()), redraw=False)
+            self.bboxes[-1].on_resize_end_callback = on_resize_end_callback
+            self.bboxes[-1].end_resize()
         self.state = self.EventState.IDLE

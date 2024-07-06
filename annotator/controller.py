@@ -26,10 +26,11 @@ class Controller:
         """The labels of the *current* image."""
         return self._store.labels
 
-    def add_box(self, box: Any, label: str = "none"):
+    def add_box(self, box: Any, label: str = "none", redraw: bool = True):
         """Add a new bounding box to the *current* image."""
         self._store.add_box(box, label)
-        self._view.redraw_content()  # type: ignore
+        if redraw:
+            self._view.redraw_content()  # type: ignore
         self._view.refresh_right_sidebar()  # type: ignore
 
     def image_names(self):
