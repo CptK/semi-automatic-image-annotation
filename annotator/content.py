@@ -73,7 +73,7 @@ class ImageContent(ImageTk.PhotoImage):
 
     def on_mouse_wheel(self, event_x, event_y, event_delta):
         # Ensure the mouse is inside the image
-        if event_x < 0 or event_x >= self.img_width or event_y < 0 or event_x >= self.img_height:
+        if event_x < 0 or event_x >= self.img_width or event_y < 0 or event_y >= self.img_height:
             return
 
         # Calculate the current image size
