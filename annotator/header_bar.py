@@ -6,7 +6,6 @@ from tkinter import DoubleVar, StringVar, filedialog
 import customtkinter as ctk
 
 from annotator.classes_popup import ClassesPopup
-
 from annotator.controller import Controller
 
 

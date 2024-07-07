@@ -1,9 +1,9 @@
+from collections.abc import Callable
+from tkinter import IntVar, StringVar, colorchooser
+
 import customtkinter as ctk
-from tkinter import StringVar, colorchooser, IntVar
 
 from annotator.controller import Controller
-
-from typing import Callable
 
 
 class ClassItem(ctk.CTkFrame):

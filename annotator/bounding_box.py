@@ -5,7 +5,6 @@ import customtkinter as ctk
 
 from annotator.controller import Controller
 
-
 RESIZE_CURSORS = {
     "nw": "top_left_corner",
     "ne": "top_right_corner",

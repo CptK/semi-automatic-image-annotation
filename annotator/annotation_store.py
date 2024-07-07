@@ -2,7 +2,7 @@
 
 import json
 import os
-from typing import Literal, Any
+from typing import Any, Literal
 
 import yaml
 from PIL import Image
@@ -68,7 +68,6 @@ class ClassesStore:
 
     def get_color(self, uid: int):
         return next(cls["color"] for cls in self.classes if cls["uid"] == uid)
-        
 
     def get_default_class(self):
         return next(cls for cls in self.classes if cls["default"])
@@ -219,7 +218,7 @@ class SingleImage:
             else:
                 uids.append(self.class_store.get_default_uid())
         return uids
-    
+
     def uids_to_labels(self, uids: list[int]):
         labels = []
         for uid in uids:
@@ -466,7 +465,8 @@ class AnnotationStore:
                     x_center, y_center, width, height = box
 
                     # write the label and the normalized box coordinates
-                    f.write(f"{self.class_store.get_class_names().index(label)} {x_center} {y_center} {width} {height}\n")
+                    label_idx = self.class_store.get_class_names().index(label)
+                    f.write(f"{label_idx} {x_center} {y_center} {width} {height}\n")
 
     def import_json(self, path: str, append: bool = False):
         """Import annotations from a JSON file.

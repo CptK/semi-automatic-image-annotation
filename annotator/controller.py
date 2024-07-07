@@ -1,9 +1,7 @@
 from typing import Any, Literal
 
-from annotator.annotation_store import AnnotationStore, SingleImage
+from annotator.annotation_store import AnnotationStore, ClassesStore, SingleImage
 from annotator.ui import UI
-
-from annotator.annotation_store import ClassesStore
 
 
 class Controller:
