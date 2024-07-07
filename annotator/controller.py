@@ -28,13 +28,13 @@ class Controller:
         """The bounding boxes of the *current* image."""
         return self._store.boxes
 
-    def current_labels(self):
+    def current_label_uids(self):
         """The labels of the *current* image."""
-        return self._store.labels
+        return self._store.label_uids
 
-    def add_box(self, box: Any, label: str = "none", redraw: bool = True):
+    def add_box(self, box: Any, label_uid: int, redraw: bool = True):
         """Add a new bounding box to the *current* image."""
-        self._store.add_box(box, label)
+        self._store.add_box(box, label_uid)
         if redraw:
             self._view.redraw_content()  # type: ignore
         self._view.refresh_right_sidebar()  # type: ignore
@@ -81,21 +81,63 @@ class Controller:
         """The available labels for annotation."""
         return self._store.class_store.get_class_names()
 
-    def change_label(self, idx: int, label: str):
+    def change_label(self, idx: int, label_uid: int):
         """Change the label for the given index."""
-        self._store.change_label(idx, label)
-        self._view.redraw_content()  # type: ignore
+        self._store.change_label(idx, label_uid)
+        self._view.redraw_content(only_boxes=True)  # type: ignore
 
     def change_box(self, idx: int, box: Any, redraw: bool = True):
         """Change the bounding box for the given index."""
         self._store.change_box(idx, box)
         if redraw:
-            self._view.redraw_content()  # type: ignore
+            self._view.redraw_content(only_boxes=True)  # type: ignore
 
     def delete(self, idx: int):
         """Delete the label for the given index."""
         self._store.delete(idx)
-        self._view.redraw_content()  # type: ignore
+        self._view.redraw_content(only_boxes=True)  # type: ignore
+
+    def class_iter(self):
+        """Iterate over the available classes."""
+        return iter(self._store.class_store)
+
+    def delete_class(self, uid: int):
+        self._store.class_store.delete_class(uid)
+
+    def set_default_class_uid(self, uid: int):
+        self._store.class_store.set_default_uid(uid)
+
+    def get_default_class_uid(self):
+        return self._store.class_store.get_default_uid()
+
+    def add_new_init_class(self):
+        return self._store.class_store.add_class(
+            self._store.class_store.get_next_uid(),
+            self._store.class_store.get_next_class_name(),
+            self._store.class_store.get_next_color(),
+            False,
+        )
+
+    def get_number_classes(self):
+        return len(self._store.class_store)
+
+    def change_class_color(self, uid: int, color: str):
+        self._store.class_store.change_color(uid, color)
+        self._view.redraw_content(only_boxes=True)  # type: ignore
+
+    def change_class_name(self, uid: int | list[int], name: str | list[str]):
+        self._store.class_store.change_name(uid, name)
+        self._view.redraw_content(only_boxes=True)  # type: ignore
+        self._view.refresh_right_sidebar()  # type: ignore
+
+    def get_class_color(self, uid: int):
+        return self._store.class_store.get_color(uid)
+
+    def get_class_name(self, uid: int):
+        return self._store.class_store.get_name(uid)
+
+    def get_class_uid(self, name: str):
+        return self._store.class_store.get_uid(name)
 
     def __len__(self) -> int:
         """The number of images in the dataset."""

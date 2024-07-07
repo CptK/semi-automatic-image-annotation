@@ -139,9 +139,10 @@ class Content(ctk.CTkFrame):
         self.canvas.bind("<B1-Motion>", self._on_mouse_drag)
         self.canvas.bind("<ButtonRelease-1>", self._on_mouse_release)
 
-    def update(self) -> None:
+    def update(self, only_boxes: bool = False) -> None:
         """Update the content area."""
-        self.new_image()
+        if not only_boxes:
+            self.new_image()
         self._create_bounding_boxes()
 
     def new_image(self) -> None:
@@ -210,14 +211,16 @@ class Content(ctk.CTkFrame):
         self.canvas.delete("handle")
         self.bboxes = []
 
-        for i, (box, label) in enumerate(
-            zip(self.controller.current_boxes(), self.controller.current_labels())
+        for i, (box, label_uid) in enumerate(
+            zip(self.controller.current_boxes(), self.controller.current_label_uids())
         ):
             box = self.relative_to_canvas_coords(box)
             on_resize_end_callback = lambda idx=i: self.controller.change_box(  # noqa: E731
                 idx, self.canvas_to_relative_coords(self.bboxes[idx].get_box()), redraw=False
             )
-            bbox = BoundingBox(self.canvas, box, label, self.controller.classes_store(), on_resize_end_callback, i)
+            bbox = BoundingBox(
+                self.canvas, box, label_uid, self.controller, on_resize_end_callback, i
+            )
             self.bboxes.append(bbox)
 
     def _update_bounding_boxes(self):
@@ -253,13 +256,13 @@ class Content(ctk.CTkFrame):
             BoundingBox(
                 self.canvas,
                 (event.x, event.y, event.x, event.y),
-                self.controller.classes_store().get_default_class()["name"],
-                self.controller.classes_store(),
+                self.controller.get_default_class_uid(),
+                self.controller,
                 lambda: None,
                 len(self.bboxes),
             )
         )
-        self.controller.add_box(self.canvas_to_relative_coords(self.bboxes[-1].get_box()), redraw=False)
+        self.controller.add_box(self.canvas_to_relative_coords(self.bboxes[-1].get_box()), self.bboxes[-1].class_uid, redraw=False)
         self.bboxes[-1].start_resize(event, "se")
 
     def _on_mouse_drag(self, event):

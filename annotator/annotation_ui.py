@@ -46,7 +46,7 @@ class ImageAnnotationGUI(UI):
 
     def setup_gui(self):
         """Set up the GUI layout."""
-        self.header = HeaderBar(self, self.controller.export, self.controller.classes_store(), height=self.HEADER_BAR_HEIGHT)
+        self.header = HeaderBar(self, self.controller, height=self.HEADER_BAR_HEIGHT)
         self.header.pack(fill="x", ipadx=10, ipady=10, side="top")
 
         self.left_sidebar = LeftSidebar(self, self.controller, width=self.SIDEBAR_WIDTH)
@@ -69,9 +69,9 @@ class ImageAnnotationGUI(UI):
         self.content.new_image()
         self.content.update()
 
-    def redraw_content(self):
+    def redraw_content(self, only_boxes: bool = False):
         """Redraw the content area."""
-        self.content.update()
+        self.content.update(only_boxes)
 
     def refresh_left_sidebar(self):
         """Refresh the left sidebar."""

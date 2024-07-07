@@ -2,10 +2,102 @@
 
 import json
 import os
-from typing import Literal
+from typing import Literal, Any
 
 import yaml
 from PIL import Image
+
+
+class ClassesStore:
+
+    DEFAULT_COLORS = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#00FFFF", "#FF00FF"]
+
+    def __init__(self, classes: list[dict[str, str]] | list[str]):
+        self.classes: list[dict[str, Any]] = []
+
+        if isinstance(classes[0], str):
+            for i, name in enumerate(classes):
+                self.add_class(
+                    i, str(name), self.DEFAULT_COLORS[len(self.classes) % len(self.DEFAULT_COLORS)], i == 0
+                )
+        else:
+            self.classes = classes  # type: ignore
+            if not any(cls["default"] for cls in self.classes):
+                self.classes[0]["default"] = True
+            # if there is more than one default, only the first one is kept
+            if sum(cls["default"] for cls in self.classes) > 1:
+                first_default_idx = next(i for i, cls in enumerate(self.classes) if cls["default"])
+                for i, cls in enumerate(self.classes):
+                    if i != first_default_idx:
+                        cls["default"] = False
+
+    def add_class(self, uid: int, name: str, color: str, is_default: bool = False):
+        self.classes.append({"uid": uid, "name": name, "color": color, "default": is_default})
+        return self.classes[-1]
+
+    def delete_class(self, uid: int):
+        self.classes = [cls for cls in self.classes if cls["uid"] != uid]
+        if not any(cls["default"] for cls in self.classes):
+            self.classes[0]["default"] = True
+
+    def get_class_data(self):
+        return self.classes
+
+    def get_class_names(self):
+        return [cls["name"] for cls in self.classes]
+
+    def get_next_color(self):
+        return self.DEFAULT_COLORS[len(self.classes) % len(self.DEFAULT_COLORS)]
+
+    def get_next_class_name(self):
+        name = f"Class {len(self.classes) + 1}"
+        while any(item == name for item in self.get_class_names()):
+            name = f"Class {int(name.split()[-1]) + 1}"
+        return name
+
+    def get_next_uid(self):
+        ids = [cls["uid"] for cls in self.classes]
+        return max(ids) + 1 if ids else 0
+
+    def get_default_uid(self):
+        return next(cls["uid"] for cls in self.classes if cls["default"])
+
+    def set_default_uid(self, uid: int):
+        self.classes[self.get_default_uid()]["default"] = False
+        self.classes[uid]["default"] = True
+
+    def get_color(self, uid: int):
+        return next(cls["color"] for cls in self.classes if cls["uid"] == uid)
+        
+
+    def get_default_class(self):
+        return next(cls for cls in self.classes if cls["default"])
+
+    def change_name(self, uid: int | list[int], name: str | list[str]):
+        if isinstance(uid, int):
+            uid = [uid]
+            name = [name]  # type: ignore
+
+        for i, n in zip(uid, name):
+            next(cls for cls in self.classes if cls["uid"] == i)["name"] = n
+
+    def change_color(self, uid: int, color: str):
+        next(cls for cls in self.classes if cls["uid"] == uid)["color"] = color
+
+    def get_name(self, uid: int):
+        return next(cls["name"] for cls in self.classes if cls["uid"] == uid)
+
+    def get_uid(self, name: str):
+        return next(cls["uid"] for cls in self.classes if cls["name"] == name)
+
+    def __getitem__(self, idx: int):
+        return self.classes[idx]
+
+    def __len__(self):
+        return len(self.classes)
+
+    def __iter__(self):
+        return iter(self.classes)
 
 
 class DetectionModel:
@@ -75,11 +167,12 @@ class SingleImage:
         img_size: The size to which to resize the image for automatic annotation.
     """
 
-    def __init__(self, path: str, name: str) -> None:
+    def __init__(self, path: str, name: str, class_store: ClassesStore) -> None:
         self.path = path
         self.name = name
+        self.class_store = class_store
         self.boxes: list = []
-        self.labels: list = []
+        self.label_uids: list[int] = []
         self.ready = False
         self.skip = False
         self.auto_intialized = False
@@ -95,7 +188,7 @@ class SingleImage:
                 img = Image.open(self.path)
                 res = model(img)
                 self.boxes = [r["boxn"] for r in res]
-                self.labels = [r["label"] for r in res]
+                self.label_uids = self.labels_to_uids([r["label"] for r in res])
                 self.auto_intialized = True
             except Exception as e:
                 print(f"Failed to initialize image: {e}")
@@ -104,101 +197,44 @@ class SingleImage:
         """Mark the image as ready for export."""
         self.ready = True
 
-    def change_label(self, idx, label):
+    def change_label(self, idx, label_uid: int):
         """Change the label of a bounding box in the image."""
-        self.labels[idx] = label
+        self.label_uids[idx] = label_uid
 
     def delete(self, idx):
         """Delete a bounding box from the image."""
         self.boxes.pop(idx)
-        self.labels.pop(idx)
+        self.label_uids.pop(idx)
 
-    def add_box(self, box, label="none"):
+    def add_box(self, box, label_uid: int):
         """Add a bounding box to the image."""
         self.boxes.append(box)
-        self.labels.append(label)
+        self.label_uids.append(label_uid)
+
+    def labels_to_uids(self, labels: list[str]):
+        uids = []
+        for label in labels:
+            if label in self.class_store.get_class_names():
+                uids.append(self.class_store.get_uid(label))
+            else:
+                uids.append(self.class_store.get_default_uid())
+        return uids
+    
+    def uids_to_labels(self, uids: list[int]):
+        labels = []
+        for uid in uids:
+            labels.append(self.class_store.get_name(uid))
+        return labels
 
     def __dict__(self):
         return {
             "file_path": self.path,
             "file_name": self.name,
             "boxes": self.boxes,
-            "labels": self.labels,
+            "labels": self.uids_to_labels(self.label_uids),
             "ready": self.ready,
             "skip": self.skip,
         }
-
-
-class ClassesStore:
-
-    DEFAULT_COLORS = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#00FFFF", "#FF00FF"]
-
-    def __init__(self, classes: list[dict[str, str]] | list[str]):
-        self.classes: list[dict[str, str]] = []
-
-        if isinstance(classes[0], str):
-            for i, name in enumerate(classes):
-                self.add_class(i, name, self.DEFAULT_COLORS[len(self.classes) % len(self.DEFAULT_COLORS)], i == 0)
-        else:
-            self.classes = classes
-            if not any(cls["default"] for cls in self.classes):
-                self.classes[0]["default"] = True
-            # if there is more than one default, only the first one is kept
-            if sum(cls["default"] for cls in self.classes) > 1:
-                first_default_idx = next(i for i, cls in enumerate(self.classes) if cls["default"])
-                for i, cls in enumerate(self.classes):
-                    if i != first_default_idx:
-                        cls["default"] = False
-
-    def add_class(self, uid: int, name: str, color: str, is_default: bool = False):
-        self.classes.append({"uid": uid, "name": name, "color": color, "default": is_default})
-        return self.classes[-1]
-
-    def delete_class(self, uid: int):
-        self.classes = [cls for cls in self.classes if cls["uid"] != uid]
-        if not any(cls["default"] for cls in self.classes):
-            self.classes[0]["default"] = True
-
-    def get_class_data(self):
-        return self.classes
-    
-    def get_class_names(self):
-        return [cls["name"] for cls in self.classes]
-    
-    def get_next_color(self):
-        return self.DEFAULT_COLORS[len(self.classes) % len(self.DEFAULT_COLORS)]
-    
-    def get_next_class_name(self):
-        name = f"Class {len(self.classes) + 1}"
-        while any(item == name for item in self.get_class_names()):
-            name = f"Class {int(name.split()[-1]) + 1}"
-        return name
-    
-    def get_next_uid(self):
-        ids = [cls["uid"] for cls in self.classes]
-        return max(ids) + 1 if ids else 0
-    
-    def get_default_uid(self):
-        return next(cls["uid"] for cls in self.classes if cls["default"])
-    
-    def set_default_uid(self, uid: int):
-        self.classes[self.get_default_uid()]["default"] = False
-        self.classes[uid]["default"] = True
-
-    def get_color(self, class_name: str):
-        return next(cls["color"] for cls in self.classes if cls["name"] == class_name)
-    
-    def get_default_class(self):
-        return next(cls for cls in self.classes if cls["default"])
-    
-    def __getitem__(self, idx: int):
-        return self.classes[idx]
-    
-    def __len__(self):
-        return len(self.classes)
-    
-    def __iter__(self):
-        return iter(self.classes)
 
 
 class AnnotationStore:
@@ -216,7 +252,7 @@ class AnnotationStore:
         self.model = DetectionModel(model, available_labels)
         self.data_path = data_path
 
-        self.annotations = [SingleImage(os.path.join(data_path, f), f) for f in img_files]
+        self.annotations = [SingleImage(os.path.join(data_path, f), f, self.class_store) for f in img_files]
 
         self.current_index: int = 0
         self.jump_to(self.current_index)
@@ -281,17 +317,19 @@ class AnnotationStore:
         """Mark the *current* image as ready for export."""
         self.current.ready = True
 
-    def change_label(self, idx, label):
+    def change_label(self, idx, label_uid: int):
         """Change the label of a bounding box in the *current* image."""
-        self.current.change_label(idx, label)
+        self.current.change_label(idx, label_uid)
 
     def delete(self, idx):
         """Delete a bounding box from the *current* image."""
         self.current.delete(idx)
 
-    def add_box(self, box, label="none"):
+    def add_box(self, box, label_uid: int | None = None):
         """Add a bounding box to the *current* image."""
-        self.current.add_box(box, label)
+        if label_uid is None:
+            label_uid = self.class_store.get_default_uid()
+        self.current.add_box(box, label_uid)
 
     def change_box(self, idx, box):
         """Change the coordinates of a bounding box in the *current* image."""
@@ -313,9 +351,9 @@ class AnnotationStore:
         return self.current.boxes
 
     @property
-    def labels(self):
+    def label_uids(self):
         """The class labels of the *current* image."""
-        return self.current.labels
+        return self.current.label_uids
 
     @property
     def ready(self):
@@ -359,7 +397,8 @@ class AnnotationStore:
                 f"file_name{delimiter}center_x{delimiter}center_y{delimiter}width{delimiter}height{delimiter}label\n"
             )
             for a in data:
-                for box, label in zip(a.boxes, a.labels):
+                for box, label_uid in zip(a.boxes, a.label_uids):
+                    label = self.class_store.get_name(label_uid)
                     center_x, center_y, width, height = box
                     f.write(
                         f"{a.name}{delimiter}{center_x}{delimiter}{center_y}{delimiter}{width}{delimiter}{height}{delimiter}{label}\n"
@@ -401,8 +440,8 @@ class AnnotationStore:
         data_yaml = {
             "train": os.path.join(path, "train").replace("\\", "/"),
             "val": os.path.join(path, "test").replace("\\", "/"),
-            "nc": len(self.available_labels),
-            "names": {i: label for i, label in enumerate(self.available_labels)},
+            "nc": len(self.class_store.get_class_names()),
+            "names": {i: label for i, label in enumerate(self.class_store.get_class_names())},
         }
 
         with open(os.path.join(path, "data.yaml"), "w") as f:
@@ -422,11 +461,12 @@ class AnnotationStore:
             img.save(os.path.join(path, split, "images", f"{i}.jpg"))
 
             with open(os.path.join(path, split, "labels", f"{i}.txt"), "w") as f:
-                for box, label in zip(data.boxes, data.labels):
+                for box, label_uid in zip(data.boxes, data.label_uids):
+                    label = self.class_store.get_name(label_uid)
                     x_center, y_center, width, height = box
 
                     # write the label and the normalized box coordinates
-                    f.write(f"{self.available_labels.index(label)} {x_center} {y_center} {width} {height}\n")
+                    f.write(f"{self.class_store.get_class_names().index(label)} {x_center} {y_center} {width} {height}\n")
 
     def import_json(self, path: str, append: bool = False):
         """Import annotations from a JSON file.
@@ -441,7 +481,7 @@ class AnnotationStore:
         with open(path) as f:
             data = json.load(f)
 
-        new_annotations = [SingleImage(a["file_path"], a["file_name"]) for a in data]
+        new_annotations = [SingleImage(a["file_path"], a["file_name"], self.class_store) for a in data]
 
         if append:
             self.annotations.extend(new_annotations)

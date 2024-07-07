@@ -24,8 +24,8 @@ class RightSidebarList(ctk.CTkScrollableFrame):
         for widget in self.winfo_children():
             widget.destroy()
 
-        for i, label in enumerate(self.controller.current_labels()):
-            label = label.lower() if label.lower() in self.controller.available_labels() else "none"
+        for i, label_uid in enumerate(self.controller.current_label_uids()):
+            label = self.controller.get_class_name(label_uid)
 
             # add ComboBox for each label
             frame = ctk.CTkFrame(self)
@@ -49,7 +49,8 @@ class RightSidebarList(ctk.CTkScrollableFrame):
 
     def change_label(self, label, idx):
         """Change the label for the given index."""
-        self.controller.change_label(idx, label)
+        label_uid = self.controller.get_class_uid(label)
+        self.controller.change_label(idx, label_uid)
 
     def delete(self, idx):
         """Delete the label for the given index."""
