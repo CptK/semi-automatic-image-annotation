@@ -182,9 +182,14 @@ class ClassesStore:
         return next(cls["uid"] for cls in self.classes if cls["default"])
     
     def set_default_uid(self, uid: int):
-        print(f"Changed default class from {self.get_default_uid()} to {uid}")
         self.classes[self.get_default_uid()]["default"] = False
         self.classes[uid]["default"] = True
+
+    def get_color(self, class_name: str):
+        return next(cls["color"] for cls in self.classes if cls["name"] == class_name)
+    
+    def get_default_class(self):
+        return next(cls for cls in self.classes if cls["default"])
     
     def __getitem__(self, idx: int):
         return self.classes[idx]

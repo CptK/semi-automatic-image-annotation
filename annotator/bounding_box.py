@@ -3,6 +3,9 @@ from tkinter import TclError
 
 import customtkinter as ctk
 
+from annotator.annotation_store import ClassesStore
+
+
 RESIZE_CURSORS = {
     "nw": "top_left_corner",
     "ne": "top_right_corner",
@@ -24,27 +27,25 @@ class BoundingBox:
         canvas: ctk.CTkCanvas,
         box: tuple[int, int, int, int],
         label: str,
+        classes_store: ClassesStore,
         on_resize_end_callback: Callable | None = None,
         id: int | None = None,
-        box_color: str = "red",
         label_color: str = "black",
         label_font_size: int = 12,
         label_font: str = "Helvetica",
         handle_size: int = 6,
-        handle_color: str = "red",
     ) -> None:
         self.canvas = canvas
         self.box = box
         self.x1, self.y1, self.x2, self.y2 = box
         self.label = label
+        self.classes_store = classes_store
         self.id = id
         self.on_resize_end_callback = on_resize_end_callback
-        self.box_color = box_color
         self.label_color = label_color
         self.label_font_size = label_font_size
         self.label_font = label_font
         self.handle_size = handle_size
-        self.handle_color = handle_color
         self.handles: dict[str, int] = {}
         self.resizing = False
 
@@ -53,7 +54,7 @@ class BoundingBox:
 
     def draw(self):
         """Draw the bounding box on the canvas."""
-        self.rect = self.canvas.create_rectangle(*self.box, outline=self.box_color, tags="bbox")
+        self.rect = self.canvas.create_rectangle(*self.box, outline=self.classes_store.get_color(self.label), tags="bbox")
         text = f"{self.id}: {self.label}" if self.id is not None else f"{self.label}"
         self.label_id = self.canvas.create_text(
             self.box[0],
@@ -67,8 +68,8 @@ class BoundingBox:
         # create a filled rectangle behind the label
         self.label_bg = self.canvas.create_rectangle(
             *self.canvas.bbox(self.label_id),
-            fill=self.box_color,
-            outline=self.box_color,
+            fill=self.classes_store.get_color(self.label),
+            outline=self.classes_store.get_color(self.label),
             tags="bbox",
         )
         self.canvas.tag_lower(self.label_bg, self.label_id)
@@ -99,8 +100,8 @@ class BoundingBox:
                 y - self.handle_size / 2,
                 x + self.handle_size / 2,
                 y + self.handle_size / 2,
-                outline=self.handle_color,
-                fill=self.handle_color,
+                outline=self.classes_store.get_color(self.label),
+                fill=self.classes_store.get_color(self.label),
                 tags="handle",
             )
             self.handles[pos] = handle
@@ -129,6 +130,13 @@ class BoundingBox:
                 x + self.handle_size / 2,
                 y + self.handle_size / 2,
             )
+
+        # update the color of the handles, the bounding box and the label
+        self.canvas.itemconfig(self.rect, outline=self.classes_store.get_color(self.label))
+        self.canvas.itemconfig(self.label_id, fill=self.label_color)
+        self.canvas.itemconfig(self.label_bg, fill=self.classes_store.get_color(self.label), outline=self.classes_store.get_color(self.label))
+        for handle in self.handles.values():
+            self.canvas.itemconfig(handle, outline=self.classes_store.get_color(self.label), fill=self.classes_store.get_color(self.label))
 
     def update(self, box):
         """Update the bounding box with new coordinates."""
