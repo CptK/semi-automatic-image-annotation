@@ -3,6 +3,8 @@ from typing import Any, Literal
 from annotator.annotation_store import AnnotationStore, SingleImage
 from annotator.ui import UI
 
+from annotator.annotation_store import ClassesStore
+
 
 class Controller:
 
@@ -13,6 +15,10 @@ class Controller:
     def set_view(self, view: UI):
         """Set the view for the controller."""
         self._view = view
+
+    def classes_store(self) -> ClassesStore:
+        """The class store for the dataset."""
+        return self._store.class_store
 
     def current_index(self) -> int:
         """The index of the *current* image in the dataset."""
@@ -73,7 +79,7 @@ class Controller:
 
     def available_labels(self):
         """The available labels for annotation."""
-        return self._store.available_labels
+        return self._store.class_store.get_class_names()
 
     def change_label(self, idx: int, label: str):
         """Change the label for the given index."""

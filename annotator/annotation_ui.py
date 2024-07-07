@@ -46,7 +46,7 @@ class ImageAnnotationGUI(UI):
 
     def setup_gui(self):
         """Set up the GUI layout."""
-        self.header = HeaderBar(self, self.controller.export, height=self.HEADER_BAR_HEIGHT)
+        self.header = HeaderBar(self, self.controller.export, self.controller.classes_store(), height=self.HEADER_BAR_HEIGHT)
         self.header.pack(fill="x", ipadx=10, ipady=10, side="top")
 
         self.left_sidebar = LeftSidebar(self, self.controller, width=self.SIDEBAR_WIDTH)

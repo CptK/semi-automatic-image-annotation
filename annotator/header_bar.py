@@ -5,6 +5,10 @@ from tkinter import DoubleVar, StringVar, filedialog
 
 import customtkinter as ctk
 
+from annotator.classes_popup import ClassesPopup
+
+from annotator.annotation_store import ClassesStore
+
 
 class ExportPopup(ctk.CTkToplevel):
     """Export popup window for the annotator application.
@@ -141,12 +145,16 @@ class HeaderBar(ctk.CTkFrame):
         export_func: The export function to call with the export options.
     """
 
-    def __init__(self, master, export_func, **kwargs):
+    def __init__(self, master, export_func, classes_store: ClassesStore, **kwargs):
         super().__init__(master, **kwargs)
 
         self.export_button = ctk.CTkButton(self, text="Export", command=self._export)
         self.export_button.pack(side="left", padx=10)
         self.export_func = export_func
+        self.classes_store = classes_store
+
+        self.classes_button = ctk.CTkButton(self, text="Classes", command=self._show_classes_popup)
+        self.classes_button.pack(side="left", padx=10)
 
         self.appearance_mode_optionemenu = ctk.CTkOptionMenu(
             self,
@@ -159,6 +167,11 @@ class HeaderBar(ctk.CTkFrame):
     def _export(self):
         """Show the export popup window."""
         popup = ExportPopup(self.master, self.export_func)
+        popup.grab_set()
+
+    def _show_classes_popup(self):
+        """Show the classes popup window."""
+        popup = ClassesPopup(self.master, self.classes_store, None)
         popup.grab_set()
 
     def _change_appearance_mode_event(self, new_appearance_mode: str):

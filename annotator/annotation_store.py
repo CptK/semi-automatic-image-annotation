@@ -129,6 +129,73 @@ class SingleImage:
         }
 
 
+class ClassesStore:
+
+    DEFAULT_COLORS = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#00FFFF", "#FF00FF"]
+
+    def __init__(self, classes: list[dict[str, str]] | list[str]):
+        self.classes: list[dict[str, str]] = []
+
+        if isinstance(classes[0], str):
+            for i, name in enumerate(classes):
+                self.add_class(i, name, self.DEFAULT_COLORS[len(self.classes) % len(self.DEFAULT_COLORS)], i == 0)
+        else:
+            self.classes = classes
+            if not any(cls["default"] for cls in self.classes):
+                self.classes[0]["default"] = True
+            # if there is more than one default, only the first one is kept
+            if sum(cls["default"] for cls in self.classes) > 1:
+                first_default_idx = next(i for i, cls in enumerate(self.classes) if cls["default"])
+                for i, cls in enumerate(self.classes):
+                    if i != first_default_idx:
+                        cls["default"] = False
+
+    def add_class(self, uid: int, name: str, color: str, is_default: bool = False):
+        self.classes.append({"uid": uid, "name": name, "color": color, "default": is_default})
+        return self.classes[-1]
+
+    def delete_class(self, uid: int):
+        self.classes = [cls for cls in self.classes if cls["uid"] != uid]
+        if not any(cls["default"] for cls in self.classes):
+            self.classes[0]["default"] = True
+
+    def get_class_data(self):
+        return self.classes
+    
+    def get_class_names(self):
+        return [cls["name"] for cls in self.classes]
+    
+    def get_next_color(self):
+        return self.DEFAULT_COLORS[len(self.classes) % len(self.DEFAULT_COLORS)]
+    
+    def get_next_class_name(self):
+        name = f"Class {len(self.classes) + 1}"
+        while any(item == name for item in self.get_class_names()):
+            name = f"Class {int(name.split()[-1]) + 1}"
+        return name
+    
+    def get_next_uid(self):
+        ids = [cls["uid"] for cls in self.classes]
+        return max(ids) + 1 if ids else 0
+    
+    def get_default_uid(self):
+        return next(cls["uid"] for cls in self.classes if cls["default"])
+    
+    def set_default_uid(self, uid: int):
+        print(f"Changed default class from {self.get_default_uid()} to {uid}")
+        self.classes[self.get_default_uid()]["default"] = False
+        self.classes[uid]["default"] = True
+    
+    def __getitem__(self, idx: int):
+        return self.classes[idx]
+    
+    def __len__(self):
+        return len(self.classes)
+    
+    def __iter__(self):
+        return iter(self.classes)
+
+
 class AnnotationStore:
     """A class for storing and managing annotations.
 
@@ -140,9 +207,9 @@ class AnnotationStore:
 
     def __init__(self, data_path: str, model, available_labels: list[str]):
         img_files = [f for f in os.listdir(data_path)]
+        self.class_store = ClassesStore(available_labels)
         self.model = DetectionModel(model, available_labels)
         self.data_path = data_path
-        self.available_labels = available_labels
 
         self.annotations = [SingleImage(os.path.join(data_path, f), f) for f in img_files]
 
