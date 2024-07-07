@@ -219,7 +219,7 @@ class Content(ctk.CTkFrame):
             on_resize_end_callback = lambda idx=i: self.controller.change_box(  # noqa: E731
                 idx, self.canvas_to_relative_coords(self.bboxes[idx].get_box()), redraw=False
             )
-            bbox = BoundingBox(self.canvas, box, label, on_resize_end_callback, BOX_COLOR)
+            bbox = BoundingBox(self.canvas, box, label, on_resize_end_callback, i, BOX_COLOR)
             self.bboxes.append(bbox)
 
     def _update_bounding_boxes(self):
@@ -252,7 +252,14 @@ class Content(ctk.CTkFrame):
 
         self.state = self.EventState.DRAWING
         self.bboxes.append(
-            BoundingBox(self.canvas, (event.x, event.y, event.x, event.y), "none", lambda: None, BOX_COLOR)
+            BoundingBox(
+                self.canvas,
+                (event.x, event.y, event.x, event.y),
+                "none",
+                lambda: None,
+                len(self.bboxes),
+                BOX_COLOR,
+            )
         )
         self.controller.add_box(self.canvas_to_relative_coords(self.bboxes[-1].get_box()), redraw=False)
         self.bboxes[-1].start_resize(event, "se")

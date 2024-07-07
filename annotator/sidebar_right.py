@@ -31,6 +31,9 @@ class RightSidebarList(ctk.CTkScrollableFrame):
             frame = ctk.CTkFrame(self)
             frame.pack(fill="x", pady=5, padx=5)
 
+            id_label = ctk.CTkLabel(frame, text=f"{i}.")
+            id_label.pack(side="left", fill="x", expand=True, padx=(0, 5))
+
             # Add ComboBox for each label inside the frame
             label_option = ctk.CTkComboBox(
                 frame,

@@ -17,12 +17,15 @@ RESIZE_CURSORS = {
 
 class BoundingBox:
 
+    LABEL_OFFSET = 18
+
     def __init__(
         self,
         canvas: ctk.CTkCanvas,
         box: tuple[int, int, int, int],
         label: str,
         on_resize_end_callback: Callable | None = None,
+        id: int | None = None,
         box_color: str = "red",
         label_color: str = "black",
         label_font_size: int = 12,
@@ -34,6 +37,7 @@ class BoundingBox:
         self.box = box
         self.x1, self.y1, self.x2, self.y2 = box
         self.label = label
+        self.id = id
         self.on_resize_end_callback = on_resize_end_callback
         self.box_color = box_color
         self.label_color = label_color
@@ -50,15 +54,24 @@ class BoundingBox:
     def draw(self):
         """Draw the bounding box on the canvas."""
         self.rect = self.canvas.create_rectangle(*self.box, outline=self.box_color, tags="bbox")
+        text = f"{self.id}: {self.label}" if self.id is not None else f"{self.label}"
         self.label_id = self.canvas.create_text(
             self.box[0],
-            self.box[1] - 16,
-            text=self.label,
+            self.box[1] - self.LABEL_OFFSET,
+            text=text,
             anchor="nw",
             fill=self.label_color,
             font=(self.label_font, self.label_font_size),
             tags="bbox",
         )
+        # create a filled rectangle behind the label
+        self.label_bg = self.canvas.create_rectangle(
+            *self.canvas.bbox(self.label_id),
+            fill=self.box_color,
+            outline=self.box_color,
+            tags="bbox",
+        )
+        self.canvas.tag_lower(self.label_bg, self.label_id)
 
     def get_handle_at(self, x: int, y: int) -> str | None:
         """Check if a handle is at the given coordinates."""
@@ -122,7 +135,8 @@ class BoundingBox:
         self.box = box
         self.x1, self.y1, self.x2, self.y2 = box
         self.canvas.coords(self.rect, *self.box)
-        self.canvas.coords(self.label_id, self.box[0], self.box[1] - 16)
+        self.canvas.coords(self.label_id, self.box[0], self.box[1] - self.LABEL_OFFSET)
+        self.canvas.coords(self.label_bg, *self.canvas.bbox(self.label_id))
         self._update_handles()
 
     def _change_cursor(self, event, pos):
