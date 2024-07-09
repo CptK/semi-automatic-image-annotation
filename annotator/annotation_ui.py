@@ -17,16 +17,19 @@ class ImageAnnotationGUI(UI):
     """Main GUI class for the image annotation tool.
 
     Args:
-        annotation_store: The annotation store object to use for image data.
+        controller: The controller object for the application.
 
     Example:
         >>> from annotator.annotation_store import AnnotationStore
         >>> from annotator.annotation_ui import ImageAnnotationGUI
+        >>> from annotator.controller import Controller
         >>> from yolo import YOLO
         >>> model = YOLO("yolov8m.pt")
         >>> store = AnnotationStore("path/to/data", model, available_labels=["label1", "label2"])
-        >>> gui = ImageAnnotationGUI(store)
-        >>> gui.mainloop()
+        >>> controller = Controller(store)
+        >>> app = ImageAnnotationGUI(controller)
+        >>> controller.set_view(app)
+        >>> app.mainloop()
     """
 
     INITIAL_WIDTH = 1200
@@ -35,7 +38,7 @@ class ImageAnnotationGUI(UI):
     HEADER_BAR_HEIGHT = 50
     SIDEBAR_WIDTH = 200
 
-    def __init__(self, controller: Controller):
+    def __init__(self, controller: Controller) -> None:
         super().__init__()
         self.title("YOLO Image Annotation Tool")
         self.geometry(f"{self.INITIAL_WIDTH}x{self.INITIAL_HEIGHT}")
@@ -44,9 +47,9 @@ class ImageAnnotationGUI(UI):
 
         self.setup_gui()
 
-    def setup_gui(self):
+    def setup_gui(self) -> None:
         """Set up the GUI layout."""
-        self.header = HeaderBar(self, self.controller.export, height=self.HEADER_BAR_HEIGHT)
+        self.header = HeaderBar(self, self.controller, height=self.HEADER_BAR_HEIGHT)
         self.header.pack(fill="x", ipadx=10, ipady=10, side="top")
 
         self.left_sidebar = LeftSidebar(self, self.controller, width=self.SIDEBAR_WIDTH)
@@ -62,21 +65,21 @@ class ImageAnnotationGUI(UI):
         )
         self.content.pack()
 
-    def refresh_all(self):
+    def refresh_all(self) -> None:
         """Refresh all GUI elements."""
         self.left_sidebar.update()
         self.right_sidebar.update()
         self.content.new_image()
         self.content.update()
 
-    def redraw_content(self):
+    def redraw_content(self, only_boxes: bool = False) -> None:
         """Redraw the content area."""
-        self.content.update()
+        self.content.update(only_boxes)
 
-    def refresh_left_sidebar(self):
+    def refresh_left_sidebar(self) -> None:
         """Refresh the left sidebar."""
         self.left_sidebar.update()
 
-    def refresh_right_sidebar(self):
+    def refresh_right_sidebar(self) -> None:
         """Refresh the right sidebar."""
         self.right_sidebar.update()

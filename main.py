@@ -1,3 +1,5 @@
+"""Main module for the annotator application."""
+
 from ultralytics import YOLO
 
 from annotator.annotation_store import AnnotationStore

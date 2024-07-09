@@ -8,12 +8,16 @@ from PIL import Image, ImageTk
 from annotator.bounding_box import BoundingBox
 from annotator.controller import Controller
 
-BOX_COLOR = "red"
-
 
 class ImageContent(ImageTk.PhotoImage):
+    """Image content class for the annotator application. Supports zooming in and out of the image.
 
-    def __init__(self, image_path: str, initial_size: tuple[int, int], **kwargs):
+    Args:
+        image_path: The path to the image file.
+        initial_size: The initial size of the image content area.
+    """
+
+    def __init__(self, image_path: str, initial_size: tuple[int, int], **kwargs) -> None:
         self.available_width, self.available_height = initial_size
         self.original_image = Image.open(image_path)
         self.image = self.original_image.copy()
@@ -27,6 +31,14 @@ class ImageContent(ImageTk.PhotoImage):
         self.zoom_center: tuple = (self.img_width // 2, self.img_height // 2)
 
     def calc_fit_size(self, image_size: tuple[int, int]) -> tuple[int, int]:
+        """Calculate the size of the image to fit the available space.
+
+        Args:
+            image_size: The size of the image.
+
+        Returns:
+            The width and height of the image that fits the available space.
+        """
         img_width, img_height = image_size
 
         # Resize the image to fit the available space
@@ -42,6 +54,12 @@ class ImageContent(ImageTk.PhotoImage):
         return img_width, img_height
 
     def configure(self, available_width: int, available_height: int) -> None:
+        """Configure the image content area with the new available space.
+
+        Args:
+            available_width: The available width for the image content area.
+            available_height: The available height for the image content area.
+        """
         self.available_width = available_width
         self.available_height = available_height
         self.img_width, self.img_height = self.calc_fit_size(self.original_image.size)
@@ -49,6 +67,7 @@ class ImageContent(ImageTk.PhotoImage):
         self.paste(self.image)
 
     def zoom(self) -> None:
+        """Zoom in or out of the image."""
         if self.image is None:
             return
 
@@ -71,7 +90,14 @@ class ImageContent(ImageTk.PhotoImage):
         self.image = zoomed_image.crop((crop_x1, crop_y1, crop_x2, crop_y2))
         self.paste(self.image)
 
-    def on_mouse_wheel(self, event_x, event_y, event_delta):
+    def on_mouse_wheel(self, event_x: int, event_y: int, event_delta) -> None:
+        """Handle the mouse wheel event to zoom in or out of the image.
+
+        Args:
+            event_x: The x-coordinate of the mouse event.
+            event_y: The y-coordinate of the mouse event.
+            event_delta: The delta value of the mouse wheel event.
+        """
         # Ensure the mouse is inside the image
         if event_x < 0 or event_x >= self.img_width or event_y < 0 or event_y >= self.img_height:
             return
@@ -114,15 +140,23 @@ class Content(ctk.CTkFrame):
 
     Args:
         master: The parent widget.
-        annotation_store: The annotation store object to use for image data.
+        controller: The controller object to use for data manipulation.
+        initial_size: The initial size of the content area.
     """
 
     class EventState(Enum):
+        """Enumeration for the event states.
+
+        IDLE: The content area is idle, i.e. nothing is drawn or resized.
+        DRAWING: The content area is in drawing mode, i.e., drawing a new bounding box.
+        RESIZING: The content area is in resizing mode, i.e., resizing a bounding box.
+        """
+
         IDLE = 0
         DRAWING = 1
         RESIZING = 2
 
-    def __init__(self, master, controller: Controller, initial_size: tuple[int, int], **kwargs):
+    def __init__(self, master, controller: Controller, initial_size: tuple[int, int], **kwargs) -> None:
         super().__init__(master, **kwargs)
         self.controller = controller
         self.canvas = ctk.CTkCanvas(self)
@@ -141,9 +175,10 @@ class Content(ctk.CTkFrame):
         self.canvas.bind("<B1-Motion>", self._on_mouse_drag)
         self.canvas.bind("<ButtonRelease-1>", self._on_mouse_release)
 
-    def update(self) -> None:
+    def update(self, only_boxes: bool = False) -> None:
         """Update the content area."""
-        self.new_image()
+        if not only_boxes:
+            self.new_image()
         self._create_bounding_boxes()
 
     def new_image(self) -> None:
@@ -167,7 +202,17 @@ class Content(ctk.CTkFrame):
                 font=("Arial", 24),
             )
 
-    def relative_to_canvas_coords(self, box):
+    def relative_to_canvas_coords(
+        self, box: tuple[float, float, float, float]
+    ) -> tuple[float, float, float, float]:
+        """Convert relative bounding box coordinates to canvas coordinates.
+
+        Args:
+            box: The relative bounding box coordinates (center_x, center_y, width, height).
+
+        Returns:
+            The bounding box coordinates in canvas coordinates (x1, y1, x2, y2).
+        """
         center_x, center_y, width, height = box
         img_width, img_height = self.image_content.img_width, self.image_content.img_height
         zoom_center = self.image_content.zoom_center
@@ -187,7 +232,17 @@ class Content(ctk.CTkFrame):
 
         return x1, y1, x2, y2
 
-    def canvas_to_relative_coords(self, canvas_coords):
+    def canvas_to_relative_coords(
+        self, canvas_coords: tuple[float, float, float, float]
+    ) -> tuple[float, float, float, float]:
+        """Convert canvas bounding box coordinates to relative coordinates.
+
+        Args:
+            canvas_coords: The bounding box coordinates in canvas coordinates (x1, y1, x2, y2).
+
+        Returns:
+            The relative bounding box coordinates (center_x, center_y, width, height).
+        """
         x1, y1, x2, y2 = canvas_coords
         img_width, img_height = self.image_content.img_width, self.image_content.img_height
         zoom_center = self.image_content.zoom_center
@@ -207,33 +262,37 @@ class Content(ctk.CTkFrame):
 
         return center_x, center_y, width, height
 
-    def _create_bounding_boxes(self):
+    def _create_bounding_boxes(self) -> None:
+        """Create the bounding boxes for the current image."""
         self.canvas.delete("bbox")
         self.canvas.delete("handle")
         self.bboxes = []
 
-        for i, (box, label) in enumerate(
-            zip(self.controller.current_boxes(), self.controller.current_labels())
+        for i, (box, label_uid) in enumerate(
+            zip(self.controller.current_boxes(), self.controller.current_label_uids())
         ):
             box = self.relative_to_canvas_coords(box)
             on_resize_end_callback = lambda idx=i: self.controller.change_box(  # noqa: E731
                 idx, self.canvas_to_relative_coords(self.bboxes[idx].get_box()), redraw=False
             )
-            bbox = BoundingBox(self.canvas, box, label, on_resize_end_callback, i, BOX_COLOR)
+            bbox = BoundingBox(self.canvas, box, label_uid, self.controller, on_resize_end_callback, i)
             self.bboxes.append(bbox)
 
-    def _update_bounding_boxes(self):
+    def _update_bounding_boxes(self) -> None:
+        """Update the bounding boxes for the current image."""
         for bbox, box in zip(self.bboxes, self.controller.current_boxes()):
             box = self.relative_to_canvas_coords(box)
             bbox.update(box)
         self.canvas.tag_raise("bbox")
         self.canvas.tag_raise("handle")
 
-    def _on_mouse_wheel(self, event):
+    def _on_mouse_wheel(self, event) -> None:
+        """Handle the mouse wheel event."""
         self.image_content.on_mouse_wheel(event.x, event.y, event.delta)
         self._update_bounding_boxes()
 
-    def _on_configure(self, _):
+    def _on_configure(self, _) -> None:
+        """Handle the configure event."""
         available_width = self.master.winfo_width() - 400
         available_height = self.master.winfo_height() - 50
         if available_width != self.available_width or available_height != self.available_height:
@@ -242,7 +301,8 @@ class Content(ctk.CTkFrame):
             self.new_image()
             self._update_bounding_boxes()
 
-    def _on_mouse_click(self, event):
+    def _on_mouse_click(self, event) -> None:
+        """Handle the mouse click event."""
         for bbox in self.bboxes:
             handle = bbox.get_handle_at(event.x, event.y)
             if handle:
@@ -255,23 +315,26 @@ class Content(ctk.CTkFrame):
             BoundingBox(
                 self.canvas,
                 (event.x, event.y, event.x, event.y),
-                "none",
+                self.controller.get_default_class_uid(),
+                self.controller,
                 lambda: None,
                 len(self.bboxes),
-                BOX_COLOR,
             )
         )
-        self.controller.add_box(self.canvas_to_relative_coords(self.bboxes[-1].get_box()), redraw=False)
+        coords = self.canvas_to_relative_coords(self.bboxes[-1].get_box())
+        self.controller.add_box(coords, self.bboxes[-1].class_uid, redraw=False)
         self.bboxes[-1].start_resize(event, "se")
 
-    def _on_mouse_drag(self, event):
+    def _on_mouse_drag(self, event) -> None:
+        """Handle the mouse drag event."""
         if self.state == self.EventState.RESIZING:
             for bbox in self.bboxes:
                 bbox.resize(event.x, event.y)
         elif self.state == self.EventState.DRAWING:
             self.bboxes[-1].resize(event.x, event.y)
 
-    def _on_mouse_release(self, event):
+    def _on_mouse_release(self, event) -> None:
+        """Handle the mouse release event."""
         if self.state == self.EventState.RESIZING:
             for bbox in self.bboxes:
                 bbox.end_resize()

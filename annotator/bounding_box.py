@@ -1,7 +1,11 @@
+"""Bounding box class for drawing and resizing bounding boxes on a canvas."""
+
 from collections.abc import Callable
 from tkinter import TclError
 
 import customtkinter as ctk
+
+from annotator.controller import Controller
 
 RESIZE_CURSORS = {
     "nw": "top_left_corner",
@@ -16,6 +20,20 @@ RESIZE_CURSORS = {
 
 
 class BoundingBox:
+    """ "Bounding box class for drawing and resizing bounding boxes on a canvas.
+
+    Args:
+        canvas: The canvas to draw the bounding box on.
+        box: The coordinates of the bounding box (x1, y1, x2, y2).
+        class_uid: The class UID of the object class.
+        controller: The controller object.
+        on_resize_end_callback: The callback function to call when resizing ends.
+        id: The ID of the bounding box.
+        label_color: The color of the label text.
+        label_font_size: The font size of the label text.
+        label_font: The font of the label text.
+        handle_size: The size of the resize handles.
+    """
 
     LABEL_OFFSET = 18
 
@@ -23,28 +41,26 @@ class BoundingBox:
         self,
         canvas: ctk.CTkCanvas,
         box: tuple[int, int, int, int],
-        label: str,
+        class_uid: int,
+        controller: Controller,
         on_resize_end_callback: Callable | None = None,
         id: int | None = None,
-        box_color: str = "red",
         label_color: str = "black",
         label_font_size: int = 12,
         label_font: str = "Helvetica",
         handle_size: int = 6,
-        handle_color: str = "red",
     ) -> None:
         self.canvas = canvas
         self.box = box
         self.x1, self.y1, self.x2, self.y2 = box
-        self.label = label
+        self.class_uid = class_uid
+        self.controller = controller
         self.id = id
         self.on_resize_end_callback = on_resize_end_callback
-        self.box_color = box_color
         self.label_color = label_color
         self.label_font_size = label_font_size
         self.label_font = label_font
         self.handle_size = handle_size
-        self.handle_color = handle_color
         self.handles: dict[str, int] = {}
         self.resizing = False
 
@@ -53,7 +69,9 @@ class BoundingBox:
 
     def draw(self):
         """Draw the bounding box on the canvas."""
-        self.rect = self.canvas.create_rectangle(*self.box, outline=self.box_color, tags="bbox")
+        self.rect = self.canvas.create_rectangle(
+            *self.box, outline=self.controller.get_class_color(self.class_uid), tags="bbox"
+        )
         text = f"{self.id}: {self.label}" if self.id is not None else f"{self.label}"
         self.label_id = self.canvas.create_text(
             self.box[0],
@@ -67,8 +85,8 @@ class BoundingBox:
         # create a filled rectangle behind the label
         self.label_bg = self.canvas.create_rectangle(
             *self.canvas.bbox(self.label_id),
-            fill=self.box_color,
-            outline=self.box_color,
+            fill=self.controller.get_class_color(self.class_uid),
+            outline=self.controller.get_class_color(self.class_uid),
             tags="bbox",
         )
         self.canvas.tag_lower(self.label_bg, self.label_id)
@@ -82,6 +100,7 @@ class BoundingBox:
         return None
 
     def _create_handles(self):
+        """Create the resize handles for the bounding box."""
         center_positions = {
             "nw": (self.x1, self.y1),
             "ne": (self.x2, self.y1),
@@ -99,8 +118,8 @@ class BoundingBox:
                 y - self.handle_size / 2,
                 x + self.handle_size / 2,
                 y + self.handle_size / 2,
-                outline=self.handle_color,
-                fill=self.handle_color,
+                outline=self.controller.get_class_color(self.class_uid),
+                fill=self.controller.get_class_color(self.class_uid),
                 tags="handle",
             )
             self.handles[pos] = handle
@@ -130,25 +149,48 @@ class BoundingBox:
                 y + self.handle_size / 2,
             )
 
+        # update the color of the handles, the bounding box and the label
+        self.canvas.itemconfig(self.rect, outline=self.controller.get_class_color(self.class_uid))
+        self.canvas.itemconfig(self.label_id, fill=self.label_color)
+        self.canvas.itemconfig(
+            self.label_bg,
+            fill=self.controller.get_class_color(self.class_uid),
+            outline=self.controller.get_class_color(self.class_uid),
+        )
+        for handle in self.handles.values():
+            self.canvas.itemconfig(
+                handle,
+                outline=self.controller.get_class_color(self.class_uid),
+                fill=self.controller.get_class_color(self.class_uid),
+            )
+
     def update(self, box):
         """Update the bounding box with new coordinates."""
         self.box = box
         self.x1, self.y1, self.x2, self.y2 = box
         self.canvas.coords(self.rect, *self.box)
         self.canvas.coords(self.label_id, self.box[0], self.box[1] - self.LABEL_OFFSET)
+
+        # update the label text
+        text = f"{self.id}: {self.label}" if self.id is not None else f"{self.label}"
+        self.canvas.itemconfig(self.label_id, text=text)
+
         self.canvas.coords(self.label_bg, *self.canvas.bbox(self.label_id))
         self._update_handles()
 
     def _change_cursor(self, event, pos):
+        """Change the cursor when hovering over a resize handle."""
         try:
             self.canvas.config(cursor=RESIZE_CURSORS[pos])
         except TclError:
             self.canvas.config(cursor="")
 
     def _reset_cursor(self, event):
+        """Reset the cursor when leaving a resize handle."""
         self.canvas.config(cursor="")
 
     def start_resize(self, event, pos):
+        """Start resizing the bounding box."""
         self.canvas.config(cursor=RESIZE_CURSORS[pos])
         self.active_handle = pos
         self.start_x = event.x
@@ -156,6 +198,12 @@ class BoundingBox:
         self.resizing = True
 
     def resize(self, x, y):
+        """Resize the bounding box.
+
+        Args:
+            x: The x-coordinate of the mouse on the canvas.
+            y: The y-coordinate of the mouse on the canvas.
+        """
         if not self.resizing:
             return
 
@@ -184,6 +232,7 @@ class BoundingBox:
         self.update(self.box)
 
     def end_resize(self):
+        """End resizing the bounding box."""
         if hasattr(self, "active_handle"):
             del self.active_handle
         if not self.resizing:
@@ -195,3 +244,7 @@ class BoundingBox:
 
     def get_box(self) -> tuple[int, int, int, int]:
         return self.x1, self.y1, self.x2, self.y2
+
+    @property
+    def label(self):
+        return self.controller.get_class_name(self.class_uid)
