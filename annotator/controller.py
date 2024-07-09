@@ -1,3 +1,5 @@
+"""The controller module for the annotator."""
+
 from typing import Any, Literal
 
 from annotator.annotation_store import AnnotationStore, ClassesStore, SingleImage
@@ -5,6 +7,14 @@ from annotator.ui import UI
 
 
 class Controller:
+    """The controller for the annotator application.
+
+    Args:
+        store: The annotation store object to use for image data.
+
+    Note:
+    - It is required to set the view for the controller using the `set_view` method.
+    """
 
     def __init__(self, store: AnnotationStore):
         self._store = store
@@ -79,7 +89,7 @@ class Controller:
     def available_labels(self):
         """The available labels for annotation."""
         return self._store.class_store.get_class_names()
-    
+
     def available_class_uids(self):
         """The available class uids for annotation."""
         return self._store.class_store.get_class_uids()
@@ -106,7 +116,7 @@ class Controller:
 
     def delete_class(self, uid: int, change_classes_uid: int | None = None, redraw: bool = True):
         """Delete a class from the dataset.
-        
+
         Args:
             uid: The unique identifier of the class.
             change_classes_uid: The class to change bbox labels to. If None, the bboxes are deleted.
@@ -120,13 +130,16 @@ class Controller:
         if redraw:
             self._view.redraw_content(only_boxes=True)  # type: ignore
 
-    def set_default_class_uid(self, uid: int):
+    def set_default_class_uid(self, uid: int) -> None:
+        """Set the default class uid."""
         self._store.class_store.set_default_uid(uid)
 
-    def get_default_class_uid(self):
+    def get_default_class_uid(self) -> int:
+        """Get the default class uid."""
         return self._store.class_store.get_default_uid()
 
-    def add_new_init_class(self):
+    def add_new_init_class(self) -> dict[str, Any]:
+        """Add a new class to the dataset with default values."""
         return self._store.class_store.add_class(
             self._store.class_store.get_next_uid(),
             self._store.class_store.get_next_class_name(),
@@ -134,25 +147,36 @@ class Controller:
             False,
         )
 
-    def get_number_classes(self):
+    def get_number_classes(self) -> int:
+        """The number of classes in the dataset."""
         return len(self._store.class_store)
 
-    def change_class_color(self, uid: int, color: str):
+    def change_class_color(self, uid: int, color: str) -> None:
+        """Change the color of a class."""
         self._store.class_store.change_color(uid, color)
         self._view.redraw_content(only_boxes=True)  # type: ignore
 
-    def change_class_name(self, uid: int | list[int], name: str | list[str]):
+    def change_class_name(self, uid: int | list[int], name: str | list[str]) -> None:
+        """Change the name of a class or a list of classes.
+
+        Args:
+            uid: The unique identifier of the class or a list of unique identifiers.
+            name: The new name for the class or a list of new names.
+        """
         self._store.class_store.change_name(uid, name)
         self._view.redraw_content(only_boxes=True)  # type: ignore
         self._view.refresh_right_sidebar()  # type: ignore
 
-    def get_class_color(self, uid: int):
+    def get_class_color(self, uid: int) -> str:
+        """Get the color of a class."""
         return self._store.class_store.get_color(uid)
 
-    def get_class_name(self, uid: int):
+    def get_class_name(self, uid: int) -> str:
+        """Get the name of a class."""
         return self._store.class_store.get_name(uid)
 
-    def get_class_uid(self, name: str):
+    def get_class_uid(self, name: str) -> int:
+        """Get the unique identifier of a class."""
         return self._store.class_store.get_uid(name)
 
     def __len__(self) -> int:

@@ -1,5 +1,7 @@
 """Left sidebar for the annotator GUI."""
 
+from collections.abc import Callable
+
 import customtkinter as ctk
 
 from annotator.controller import Controller
@@ -15,7 +17,7 @@ class ListButton(ctk.CTkButton):
         active: Whether the button is currently active.
     """
 
-    def __init__(self, master, text, command, active: bool = False, **kwargs):
+    def __init__(self, master, text, command, active: bool = False, **kwargs) -> None:
         text_color = "black" if active else "gray"
         super().__init__(
             master,
@@ -27,7 +29,7 @@ class ListButton(ctk.CTkButton):
             **kwargs,
         )
 
-    def update(self, active: bool):
+    def update(self, active: bool) -> None:
         """Update the button appearance based on the active status.
 
         Args:
@@ -48,7 +50,7 @@ class ListItem(ctk.CTkFrame):
         ready: Whether the item is marked as ready.
     """
 
-    def __init__(self, master, text, command, active, ready, **kwargs):
+    def __init__(self, master, text: str, command: Callable, active: bool, ready: bool, **kwargs) -> None:
         super().__init__(master, **kwargs)
         self.button = ListButton(self, text=text, command=command, active=active)
         label_text = "✓" if ready else " "
@@ -58,7 +60,7 @@ class ListItem(ctk.CTkFrame):
         self.label.pack(side="right", padx=5)
         self.button.pack(fill="x", padx=5, pady=5)
 
-    def update(self, active, ready):
+    def update(self, active, ready) -> None:
         """Update the list item appearance based on the active status and readiness.
 
         Args:
@@ -75,15 +77,15 @@ class LeftSidebar(ctk.CTkScrollableFrame):
 
     Args:
         master: The parent widget.
-        annotation_store: The annotation store object to use for image data.
+        controller: The controller object.
     """
 
-    def __init__(self, master, controller: Controller, **kwargs):
+    def __init__(self, master, controller: Controller, **kwargs) -> None:
         super().__init__(master, **kwargs)
         self.controller = controller
         self.setup()
 
-    def setup(self):
+    def setup(self) -> None:
         """Set up the left sidebar list items."""
         self.list_items: list[ListItem] = []
         for i, name in enumerate(self.controller.image_names()):
@@ -97,7 +99,7 @@ class LeftSidebar(ctk.CTkScrollableFrame):
             button.pack(fill="x", padx=5, pady=5)
             self.list_items.append(button)
 
-    def update(self):
+    def update(self) -> None:
         """Update the left sidebar list items."""
         for i, list_item in enumerate(self.list_items):
             list_item.update(

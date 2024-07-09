@@ -9,6 +9,17 @@ from PIL import Image
 
 
 class ClassesStore:
+    """A class for storing and managing object classes.
+
+    Each class is represented as a dictionary with the keys
+    - 'uid': The unique identifier of the class.
+    - 'name': The name of the class.
+    - 'color': The color of the class.
+    - 'default': Whether the class is the default class.
+
+    Args:
+        classes: A list of class dictionaries or class names.
+    """
 
     DEFAULT_COLORS = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#00FFFF", "#FF00FF"]
 
@@ -31,67 +42,119 @@ class ClassesStore:
                     if i != first_default_idx:
                         cls["default"] = False
 
-    def add_class(self, uid: int, name: str, color: str, is_default: bool = False):
+    def add_class(self, uid: int, name: str, color: str, is_default: bool = False) -> dict[str, Any]:
+        """Add a class to the store.
+
+        Args:
+            uid: The unique identifier of the class.
+            name: The name of the class.
+            color: The color of the class.
+            is_default: Whether the class is the default class.
+
+        Returns:
+            The dictionary representing the new class.
+
+        Raises:
+            ValueError: If a class with the same UID or name already exists, or if more than one class is set
+                        as default.
+        """
+        if any(cls["uid"] == uid for cls in self.classes):
+            raise ValueError("Class with the same UID already exists.")
+
+        if any(cls["name"] == name for cls in self.classes):
+            raise ValueError("Class with the same name already exists.")
+
+        if is_default and any(cls["default"] for cls in self.classes):
+            raise ValueError("Only one class can be the default class.")
+
         self.classes.append({"uid": uid, "name": name, "color": color, "default": is_default})
         return self.classes[-1]
 
-    def delete_class(self, uid: int):
+    def delete_class(self, uid: int) -> None:
+        """Delete a class from the store.
+
+        If the class is the default class, the first class in the list is set as the new default.
+
+        Args:
+            uid: The unique identifier of the class.
+        """
         self.classes = [cls for cls in self.classes if cls["uid"] != uid]
         if not any(cls["default"] for cls in self.classes):
             self.classes[0]["default"] = True
 
-    def get_class_data(self):
-        return self.classes
-
-    def get_class_names(self):
+    def get_class_names(self) -> list[str]:
+        """Returns a list of all class names."""
         return [cls["name"] for cls in self.classes]
-    
-    def get_class_uids(self):
+
+    def get_class_uids(self) -> list[int]:
+        """Returns a list of all class UIDs."""
         return [cls["uid"] for cls in self.classes]
 
-    def get_next_color(self):
+    def get_next_color(self) -> str:
+        """Returns the next color in the default color list."""
         return self.DEFAULT_COLORS[len(self.classes) % len(self.DEFAULT_COLORS)]
 
-    def get_next_class_name(self):
+    def get_next_class_name(self) -> str:
+        """Returns the next class name in the default naming scheme."""
         name = f"Class {len(self.classes) + 1}"
         while any(item == name for item in self.get_class_names()):
             name = f"Class {int(name.split()[-1]) + 1}"
         return name
 
-    def get_next_uid(self):
+    def get_next_uid(self) -> int:
+        """Returns the next available unique identifier."""
         ids = [cls["uid"] for cls in self.classes]
-        return max(ids) + 1 if ids else 0
+        return int(max(ids)) + 1 if ids else 0
 
-    def get_default_uid(self):
-        return next(cls["uid"] for cls in self.classes if cls["default"])
+    def get_default_uid(self) -> int:
+        """Returns the unique identifier of the default class."""
+        return int(next(cls["uid"] for cls in self.classes if cls["default"]))
 
-    def set_default_uid(self, uid: int):
+    def set_default_uid(self, uid: int) -> None:
+        """Set the default class by its unique identifier. The previous default class is unset."""
         default_class = next(cls for cls in self.classes if cls["default"])
         default_class["default"] = False
         next(cls for cls in self.classes if cls["uid"] == uid)["default"] = True
 
-    def get_color(self, uid: int):
-        return next(cls["color"] for cls in self.classes if cls["uid"] == uid)
+    def get_color(self, uid: int) -> str:
+        """Returns the color of a class by its unique identifier."""
+        return str(next(cls["color"] for cls in self.classes if cls["uid"] == uid))
 
-    def get_default_class(self):
+    def get_default_class(self) -> dict[str, Any]:
+        """Returns the default class."""
         return next(cls for cls in self.classes if cls["default"])
 
-    def change_name(self, uid: int | list[int], name: str | list[str]):
+    def change_name(self, uid: int | list[int], name: str | list[str]) -> None:
+        """Change the name of a class or a list of classes by their unique identifiers.
+
+        Args:
+            uid: The unique identifier of the class or a list of unique identifiers.
+            name: The new name of the class or a list of new names.
+
+        Raises:
+            ValueError: If the number of UIDs and names do not match.
+        """
         if isinstance(uid, int):
             uid = [uid]
             name = [name]  # type: ignore
 
+        if len(uid) != len(name):
+            raise ValueError("Number of UIDs and names do not match.")
+
         for i, n in zip(uid, name):
             next(cls for cls in self.classes if cls["uid"] == i)["name"] = n
 
-    def change_color(self, uid: int, color: str):
+    def change_color(self, uid: int, color: str) -> None:
+        """Change the color of a class by its unique identifier."""
         next(cls for cls in self.classes if cls["uid"] == uid)["color"] = color
 
-    def get_name(self, uid: int):
-        return next(cls["name"] for cls in self.classes if cls["uid"] == uid)
+    def get_name(self, uid: int) -> str:
+        """Returns the name of a class by its unique identifier."""
+        return str(next(cls["name"] for cls in self.classes if cls["uid"] == uid))
 
-    def get_uid(self, name: str):
-        return next(cls["uid"] for cls in self.classes if cls["name"] == name)
+    def get_uid(self, name: str) -> int:
+        """Returns the unique identifier of a class by its name"""
+        return int(next(cls["uid"] for cls in self.classes if cls["name"] == name))
 
     def __getitem__(self, idx: int):
         return self.classes[idx]
@@ -104,6 +167,19 @@ class ClassesStore:
 
 
 class DetectionModel:
+    """A class for object detection using a PyTorch model.
+
+    The ouput format of the model should be a list of dictionaries, each containing the keys
+    - 'box' for the bounding box coordinates in the format [x1, y1, x2, y2],
+    - 'boxn' for the normalized bounding box coordinates in the format [x1, y1, x2, y2],
+    - 'label' for the class label,
+    - 'confidence' for the detection confidence.
+
+    Args:
+        model: The PyTorch model to use for object detection.
+        available_labels: A list of available class labels.
+        input_size: The size to which to resize the input images.
+    """
 
     def __init__(self, model, available_labels: list[str], input_size: tuple[int, int] = (640, 640)):
         self.model = model
@@ -214,7 +290,17 @@ class SingleImage:
         self.boxes.append(box)
         self.label_uids.append(label_uid)
 
-    def labels_to_uids(self, labels: list[str]):
+    def labels_to_uids(self, labels: list[str]) -> list[int]:
+        """Convert a list of class labels to a list of unique identifiers.
+
+        In case a label is not found in the class store, the default class is used.
+
+        Args:
+            labels: A list of class labels.
+
+        Returns:
+            A list of unique identifiers corresponding to the class labels.
+        """
         uids = []
         for label in labels:
             if label in self.class_store.get_class_names():
@@ -224,6 +310,14 @@ class SingleImage:
         return uids
 
     def uids_to_labels(self, uids: list[int]):
+        """Convert a list of unique identifiers to a list of class labels.
+
+        Args:
+            uids: A list of unique identifiers.
+
+        Returns:
+            A list of class labels corresponding to the unique identifiers.
+        """
         labels = []
         for uid in uids:
             labels.append(self.class_store.get_name(uid))
@@ -338,7 +432,9 @@ class AnnotationStore:
     def delete_all_with_label(self, label_uid: int):
         """Delete all bounding boxes with a certain label from the *current* image."""
         for annotation in self.annotations:
-            annotation.boxes = [box for i, box in enumerate(annotation.boxes) if annotation.label_uids[i] != label_uid]
+            annotation.boxes = [
+                box for i, box in enumerate(annotation.boxes) if annotation.label_uids[i] != label_uid
+            ]
             annotation.label_uids = [label for label in annotation.label_uids if label != label_uid]
 
     def add_box(self, box, label_uid: int | None = None):

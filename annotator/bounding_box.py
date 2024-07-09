@@ -1,3 +1,5 @@
+"""Bounding box class for drawing and resizing bounding boxes on a canvas."""
+
 from collections.abc import Callable
 from tkinter import TclError
 
@@ -18,6 +20,20 @@ RESIZE_CURSORS = {
 
 
 class BoundingBox:
+    """ "Bounding box class for drawing and resizing bounding boxes on a canvas.
+
+    Args:
+        canvas: The canvas to draw the bounding box on.
+        box: The coordinates of the bounding box (x1, y1, x2, y2).
+        class_uid: The class UID of the object class.
+        controller: The controller object.
+        on_resize_end_callback: The callback function to call when resizing ends.
+        id: The ID of the bounding box.
+        label_color: The color of the label text.
+        label_font_size: The font size of the label text.
+        label_font: The font of the label text.
+        handle_size: The size of the resize handles.
+    """
 
     LABEL_OFFSET = 18
 
@@ -84,6 +100,7 @@ class BoundingBox:
         return None
 
     def _create_handles(self):
+        """Create the resize handles for the bounding box."""
         center_positions = {
             "nw": (self.x1, self.y1),
             "ne": (self.x2, self.y1),
@@ -162,15 +179,18 @@ class BoundingBox:
         self._update_handles()
 
     def _change_cursor(self, event, pos):
+        """Change the cursor when hovering over a resize handle."""
         try:
             self.canvas.config(cursor=RESIZE_CURSORS[pos])
         except TclError:
             self.canvas.config(cursor="")
 
     def _reset_cursor(self, event):
+        """Reset the cursor when leaving a resize handle."""
         self.canvas.config(cursor="")
 
     def start_resize(self, event, pos):
+        """Start resizing the bounding box."""
         self.canvas.config(cursor=RESIZE_CURSORS[pos])
         self.active_handle = pos
         self.start_x = event.x
@@ -178,6 +198,12 @@ class BoundingBox:
         self.resizing = True
 
     def resize(self, x, y):
+        """Resize the bounding box.
+
+        Args:
+            x: The x-coordinate of the mouse on the canvas.
+            y: The y-coordinate of the mouse on the canvas.
+        """
         if not self.resizing:
             return
 
@@ -206,6 +232,7 @@ class BoundingBox:
         self.update(self.box)
 
     def end_resize(self):
+        """End resizing the bounding box."""
         if hasattr(self, "active_handle"):
             del self.active_handle
         if not self.resizing:

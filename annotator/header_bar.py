@@ -1,6 +1,7 @@
 """Header bar module for the annotator application."""
 
 import os
+from collections.abc import Callable
 from tkinter import DoubleVar, StringVar, filedialog
 
 import customtkinter as ctk
@@ -17,7 +18,7 @@ class ExportPopup(ctk.CTkToplevel):
         export_func: The export function to call with the export options.
     """
 
-    def __init__(self, master, export_func, **kwargs):
+    def __init__(self, master, export_func: Callable, **kwargs) -> None:
         super().__init__(master, **kwargs)
         self.title("Export Options")
         self.geometry("400x400")
@@ -97,14 +98,14 @@ class ExportPopup(ctk.CTkToplevel):
         self.transient(master)
         self.focus_set()
 
-    def _browse_path(self):
+    def _browse_path(self) -> None:
         """Browse for the export path."""
         path = filedialog.askdirectory()
         if path:
             self.path_entry.delete(0, ctk.END)
             self.path_entry.insert(0, path)
 
-    def _export_data(self):
+    def _export_data(self) -> None:
         """Export the data using the selected options."""
         export_path = self.path_entry.get()
         export_format = self.format_var.get()
@@ -130,11 +131,11 @@ class ExportPopup(ctk.CTkToplevel):
             self.warn_msg.configure(text=str(e))
             raise e
 
-    def _update_split_value(self, value):
+    def _update_split_value(self, value) -> None:
         """Update the train split value label."""
         self.split_value.set(round(float(value), 2))
 
-    def _on_format_selected(self, event):
+    def _on_format_selected(self, event) -> None:
         """Show the train-test split frame if YOLO format is selected."""
         if self.format_var.get() == "YOLO":
             self.split_frame.pack(pady=(10, 10), padx=20, fill="x", before=self.export_button)
@@ -147,10 +148,10 @@ class HeaderBar(ctk.CTkFrame):
 
     Args:
         master: The parent widget.
-        export_func: The export function to call with the export options.
+        controller: The controller object for the application.
     """
 
-    def __init__(self, master, controller: Controller, **kwargs):
+    def __init__(self, master, controller: Controller, **kwargs) -> None:
         super().__init__(master, **kwargs)
 
         self.export_button = ctk.CTkButton(self, text="Export", command=self._export)
@@ -168,16 +169,16 @@ class HeaderBar(ctk.CTkFrame):
         )
         self.appearance_mode_optionemenu.pack(side="right", padx=10)
 
-    def _export(self):
+    def _export(self) -> None:
         """Show the export popup window."""
         popup = ExportPopup(self.master, self.controller.export)
         self.wait_window(popup)
 
-    def _show_classes_popup(self):
-        """Show the classes popup window."""
+    def _show_classes_popup(self) -> None:
+        """Show the popup window for editing classes."""
         popup = ClassesPopup(self.master, self.controller)
         self.wait_window(popup)
 
-    def _change_appearance_mode_event(self, new_appearance_mode: str):
+    def _change_appearance_mode_event(self, new_appearance_mode: str) -> None:
         """Change the appearance mode of the application."""
         ctk.set_appearance_mode(new_appearance_mode)
