@@ -45,6 +45,9 @@ class ClassesStore:
 
     def get_class_names(self):
         return [cls["name"] for cls in self.classes]
+    
+    def get_class_uids(self):
+        return [cls["uid"] for cls in self.classes]
 
     def get_next_color(self):
         return self.DEFAULT_COLORS[len(self.classes) % len(self.DEFAULT_COLORS)]
@@ -63,8 +66,9 @@ class ClassesStore:
         return next(cls["uid"] for cls in self.classes if cls["default"])
 
     def set_default_uid(self, uid: int):
-        self.classes[self.get_default_uid()]["default"] = False
-        self.classes[uid]["default"] = True
+        default_class = next(cls for cls in self.classes if cls["default"])
+        default_class["default"] = False
+        next(cls for cls in self.classes if cls["uid"] == uid)["default"] = True
 
     def get_color(self, uid: int):
         return next(cls["color"] for cls in self.classes if cls["uid"] == uid)
@@ -320,9 +324,22 @@ class AnnotationStore:
         """Change the label of a bounding box in the *current* image."""
         self.current.change_label(idx, label_uid)
 
+    def change_all_labels(self, old_label_uid: int, new_label_uid: int):
+        """Change all labels of a certain type to a new label in the *current* image."""
+        for img in self.annotations:
+            for i, label_uid in enumerate(img.label_uids):
+                if label_uid == old_label_uid:
+                    img.label_uids[i] = new_label_uid
+
     def delete(self, idx):
         """Delete a bounding box from the *current* image."""
         self.current.delete(idx)
+
+    def delete_all_with_label(self, label_uid: int):
+        """Delete all bounding boxes with a certain label from the *current* image."""
+        for annotation in self.annotations:
+            annotation.boxes = [box for i, box in enumerate(annotation.boxes) if annotation.label_uids[i] != label_uid]
+            annotation.label_uids = [label for label in annotation.label_uids if label != label_uid]
 
     def add_box(self, box, label_uid: int | None = None):
         """Add a bounding box to the *current* image."""

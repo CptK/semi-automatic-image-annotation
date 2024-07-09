@@ -6,6 +6,86 @@ import customtkinter as ctk
 from annotator.controller import Controller
 
 
+class ClassDeletionPopup(ctk.CTkToplevel):
+
+    def __init__(self, master, controller: Controller, uid: int, **kwargs):
+        super().__init__(master, **kwargs)
+        self.title("Delete Class")
+        self.resizable(False, False)
+        self.controller = controller
+        self.uid = uid
+        
+        self.radio_var = IntVar(value=1)
+        self.new_class_var = StringVar()
+
+        # Create description
+        texts  = [
+            f"Are you sure you want to delete the class '{self.controller.get_class_name(self.uid)}'?",
+            f"This action cannot be undone.",
+            f"\nWhat would you like to do with the bounding boxes having the class '{self.controller.get_class_name(self.uid)}'?"
+        ]
+        text = " ".join(texts)
+        self.description = ctk.CTkLabel(self, text=text, wraplength=300, justify="left")
+        self.description.pack(side="top", pady=(20, 10), padx=10, expand=True, fill="x")
+        
+        # Create radio buttons
+        self.radio_delete = ctk.CTkRadioButton(self, text="Delete all bounding boxes with the\nrespective class", variable=self.radio_var, value=1, command=self.hide_class_options)
+        self.radio_delete.pack(padx = 15, pady=10, expand=True, fill="x")
+        
+        self.radio_rename = ctk.CTkRadioButton(self, text="Give all boxes with the old class a\nnew class", variable=self.radio_var, value=2, command=self.show_class_options)
+        self.radio_rename.pack(padx = 15, pady=10, expand=True, fill="x")
+        
+        # Placeholder for the class options
+        self.class_options_frame = ctk.CTkFrame(self, height=30, fg_color=self.cget("fg_color"))
+        self.class_options_frame.pack(pady=10, padx=15, expand=True, fill="x")
+        
+        class_options = self.controller.available_labels()
+        class_options.remove(self.controller.get_class_name(self.uid))
+        self.class_options_label = ctk.CTkLabel(self.class_options_frame, text="Select a new class:")
+        self.class_options_menu = ctk.CTkOptionMenu(self.class_options_frame, variable=self.new_class_var, values=class_options)
+        self.class_options_label.pack_forget()
+        self.class_options_menu.pack_forget()
+        
+        # Create buttons
+        self.cancel_button = ctk.CTkButton(self, text="Cancel", command=self.cancel)
+        self.cancel_button.pack(side="left", padx=15, pady=20)
+        
+        self.submit_button = ctk.CTkButton(self, text="Submit", command=self.submit)
+        self.submit_button.pack(side="right", padx=15, pady=20)
+
+        # Make the popup modal
+        self.grab_set()
+        self.transient(master)
+        self.focus_set()
+
+    def show_class_options(self):
+        # Show class options when the second radio button is selected
+        self.class_options_label.pack(side="left")
+        self.class_options_menu.pack(side="right")
+
+    def hide_class_options(self):
+        # Hide class options
+        self.class_options_label.pack_forget()
+        self.class_options_menu.pack_forget()
+
+    def cancel(self):
+        self.grab_release()
+        self.destroy()
+
+    def submit(self):
+        action = self.radio_var.get()
+        if action == 1:
+            self.controller.delete_class(uid=self.uid, change_classes_uid=None, redraw=True)
+        elif action == 2:
+            new_class = self.new_class_var.get()
+            if not new_class:
+                return
+            new_uid = self.controller.get_class_uid(new_class)
+            self.controller.delete_class(uid=self.uid, change_classes_uid=new_uid, redraw=True)
+        self.grab_release()
+        self.destroy()
+
+
 class ClassItem(ctk.CTkFrame):
     def __init__(
         self,
@@ -73,6 +153,7 @@ class ClassesContainer(ctk.CTkScrollableFrame):
             self.default_class_uid,
             uid,
             self.delete_class_item,
+            fg_color=self.cget("fg_color"),
         )
         class_item.pack(fill="x", pady=(0, 5))
         self.class_items.append(class_item)
@@ -80,9 +161,11 @@ class ClassesContainer(ctk.CTkScrollableFrame):
     def delete_class_item(self, del_item: ClassItem):
         if not self.can_delete(del_item.uid):
             return
-        del_item.pack_forget()
-        self.class_items.remove(del_item)
-        self.controller.delete_class(del_item.uid)
+        popup = ClassDeletionPopup(self, self.controller, del_item.uid)
+        self.wait_window(popup)
+        if del_item.uid not in self.controller.available_class_uids():
+            del_item.pack_forget()
+            self.class_items.remove(del_item)
 
     def update_default_uid(self, *args):
         self.controller.set_default_class_uid(self.default_class_uid.get())
@@ -96,7 +179,7 @@ class ClassesPopup(ctk.CTkToplevel):
         self.geometry("400x400")
         self.controller = controller
 
-        self.container = ctk.CTkFrame(self)
+        self.container = ctk.CTkFrame(self, fg_color=self.cget("fg_color"))
         self.container.pack(fill="both", expand=True, padx=10, pady=10)
 
         self.warning_label = ctk.CTkLabel(self.container, text="", text_color="red")
@@ -111,12 +194,17 @@ class ClassesPopup(ctk.CTkToplevel):
         self.done_button = ctk.CTkButton(self.container, text="Done", command=self.on_done)
         self.done_button.pack(side="right")
 
+        # Make the popup modal
+        self.grab_set()
+        self.transient(master)
+        self.focus_set()
+
     def add_class(self):
         new_class = self.controller.add_new_init_class()
         self.classes_container.add_class_item(new_class["name"], new_class["color"], new_class["uid"])
 
     def can_delete(self, uid: int):
-        if len(self.controller.get_number_classes()) == 1:
+        if self.controller.get_number_classes() == 1:
             self.warning_label.configure(text="Cannot delete the last class.")
             return False
         if self.controller.get_default_class_uid() == uid:
@@ -133,4 +221,5 @@ class ClassesPopup(ctk.CTkToplevel):
         uids = [item.uid for item in self.classes_container.class_items]
         self.controller.change_class_name(uids, class_names)
 
+        self.grab_release()
         self.destroy()

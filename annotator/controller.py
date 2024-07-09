@@ -60,6 +60,7 @@ class Controller:
     def mark_ready(self):
         """Mark the *current* image as ready for export."""
         self._store.mark_ready()
+        self._view.refresh_left_sidebar()  # type: ignore
 
     def next(self):
         """Move to the next image in the dataset."""
@@ -78,6 +79,10 @@ class Controller:
     def available_labels(self):
         """The available labels for annotation."""
         return self._store.class_store.get_class_names()
+    
+    def available_class_uids(self):
+        """The available class uids for annotation."""
+        return self._store.class_store.get_class_uids()
 
     def change_label(self, idx: int, label_uid: int):
         """Change the label for the given index."""
@@ -99,8 +104,21 @@ class Controller:
         """Iterate over the available classes."""
         return iter(self._store.class_store)
 
-    def delete_class(self, uid: int):
+    def delete_class(self, uid: int, change_classes_uid: int | None = None, redraw: bool = True):
+        """Delete a class from the dataset.
+        
+        Args:
+            uid: The unique identifier of the class.
+            change_classes_uid: The class to change bbox labels to. If None, the bboxes are deleted.
+            redraw: Whether to redraw the content.
+        """
+        if change_classes_uid is None:
+            self._store.delete_all_with_label(uid)
+        else:
+            self._store.change_all_labels(uid, change_classes_uid)
         self._store.class_store.delete_class(uid)
+        if redraw:
+            self._view.redraw_content(only_boxes=True)  # type: ignore
 
     def set_default_class_uid(self, uid: int):
         self._store.class_store.set_default_uid(uid)

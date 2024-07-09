@@ -29,7 +29,7 @@ class ExportPopup(ctk.CTkToplevel):
         self.warn_msg.pack(pady=(10, 0))
 
         # Path selection frame
-        self.path_frame = ctk.CTkFrame(self, bg_color="transparent")
+        self.path_frame = ctk.CTkFrame(self, bg_color="transparent", fg_color=self.cget("fg_color"))
         self.path_frame.pack(pady=(20, 10), padx=20, fill="x")
 
         self.path_label = ctk.CTkLabel(self.path_frame, text="Export Path:")
@@ -42,7 +42,7 @@ class ExportPopup(ctk.CTkToplevel):
         self.browse_button.pack(side="left")
 
         # Export format frame
-        self.format_frame = ctk.CTkFrame(self)
+        self.format_frame = ctk.CTkFrame(self, fg_color=self.cget("fg_color"))
         self.format_frame.pack(pady=(10, 20), padx=20, fill="x")
 
         self.format_label = ctk.CTkLabel(self.format_frame, text="Export Format:")
@@ -65,7 +65,7 @@ class ExportPopup(ctk.CTkToplevel):
         self.checkbox1.pack(pady=(10, 0))
 
         # Train-test split frame
-        self.split_frame = ctk.CTkFrame(self)
+        self.split_frame = ctk.CTkFrame(self, fg_color=self.cget("fg_color"))
         self.split_frame.pack(pady=(10, 10), padx=20, fill="x")
 
         self.split_label = ctk.CTkLabel(self.split_frame, text="Train Split:")
@@ -91,6 +91,11 @@ class ExportPopup(ctk.CTkToplevel):
         # Export button
         self.export_button = ctk.CTkButton(self, text="Export", command=self._export_data)
         self.export_button.pack(pady=20)
+
+        # Make the popup modal
+        self.grab_set()
+        self.transient(master)
+        self.focus_set()
 
     def _browse_path(self):
         """Browse for the export path."""
@@ -120,6 +125,7 @@ class ExportPopup(ctk.CTkToplevel):
         try:
             self.export_func(export_path, export_format, option1, option2)
             self.destroy()
+            self.grab_release()
         except Exception as e:
             self.warn_msg.configure(text=str(e))
             raise e
@@ -165,12 +171,12 @@ class HeaderBar(ctk.CTkFrame):
     def _export(self):
         """Show the export popup window."""
         popup = ExportPopup(self.master, self.controller.export)
-        popup.grab_set()
+        self.wait_window(popup)
 
     def _show_classes_popup(self):
         """Show the classes popup window."""
         popup = ClassesPopup(self.master, self.controller)
-        popup.grab_set()
+        self.wait_window(popup)
 
     def _change_appearance_mode_event(self, new_appearance_mode: str):
         """Change the appearance mode of the application."""

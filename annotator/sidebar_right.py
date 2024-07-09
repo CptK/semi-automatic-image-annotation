@@ -28,7 +28,7 @@ class RightSidebarList(ctk.CTkScrollableFrame):
             label = self.controller.get_class_name(label_uid)
 
             # add ComboBox for each label
-            frame = ctk.CTkFrame(self)
+            frame = ctk.CTkFrame(self, fg_color=self.cget("fg_color"))
             frame.pack(fill="x", pady=5, padx=5)
 
             id_label = ctk.CTkLabel(frame, text=f"{i}.")
@@ -81,19 +81,20 @@ class RightSidebar(ctk.CTkFrame):
         skip_button.pack(pady=(10, 20), padx=5, fill="x")
 
         # add checkbox and label for marking the image as ready
-        ready_var = ctk.BooleanVar()
-        ready_var.set(self.controller.ready())
+        self.ready_var = ctk.BooleanVar()
+        self.ready_var.set(self.controller.ready())
         ready_checkbox = ctk.CTkCheckBox(
-            self, text="Mark as ready", variable=ready_var, command=self.mark_ready
+            self, text="Mark as ready", variable=self.ready_var, command=self.mark_ready
         )
         ready_checkbox.pack(pady=(10, 20), padx=5, fill="x")
 
-        self.item_list = RightSidebarList(self, self.controller)
+        self.item_list = RightSidebarList(self, self.controller, fg_color=self.cget("fg_color"))
         self.item_list.pack(fill="both", expand=True)
 
     def update(self):
         """Update the right sidebar layout."""
         self.item_list.update()
+        self.ready_var.set(self.controller.ready())
 
     def mark_ready(self):
         """Mark the current image as ready."""
