@@ -447,6 +447,17 @@ class AnnotationStore:
         """Change the coordinates of a bounding box in the *current* image."""
         self.current.boxes[idx] = box
 
+    def add_images(self, paths: list[str]):
+        """Add images to the dataset.
+
+        Args:
+            paths: A list of paths to the image files.
+        """
+        for path in paths:
+            name = os.path.basename(path)
+            if not self.annotation_by_name(name):
+                self.annotations.append(SingleImage(path, name, self.class_store))
+
     @property
     def current(self) -> SingleImage:
         """The index of the *current* image in the dataset."""
