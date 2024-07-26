@@ -458,6 +458,12 @@ class AnnotationStore:
             if not self.annotation_by_name(name):
                 self.annotations.append(SingleImage(path, name, self.class_store))
 
+    def delete_image(self):
+        """Delete the *current* image from the dataset."""
+        del self.annotations[self.current_index]
+        if self.current_index >= len(self.annotations):
+            self.current_index = len(self.annotations) - 1
+
     @property
     def current(self) -> SingleImage:
         """The index of the *current* image in the dataset."""

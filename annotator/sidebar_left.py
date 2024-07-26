@@ -104,11 +104,16 @@ class LeftSidebarList(ctk.CTkScrollableFrame):
 
     def update(self) -> None:
         """Update the left sidebar list items."""
-        for i, list_item in enumerate(self.list_items):
-            list_item.update(
-                active=i == self.controller.current_index(),
-                ready=self.controller[i].ready,
-            )
+        if len(self.list_items) == len(self.controller.image_names()):
+            for i, list_item in enumerate(self.list_items):
+                list_item.update(
+                    active=i == self.controller.current_index(),
+                    ready=self.controller[i].ready,
+                )
+        else:
+            for item in self.list_items:
+                item.destroy()
+            self.setup()
 
     def add_items(self, names: list[str], idx: list[int]) -> None:
         """Add items to the left sidebar list.
