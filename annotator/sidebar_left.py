@@ -193,7 +193,7 @@ class LeftSidebar(ctk.CTkFrame):
             title="Select Image(s)",
             filetypes=[("Image Files", "*.jpg *.jpeg *.png *.bmp *.gif")],
         )
-        self._add_images(files)
+        self._add_images(list(files))
 
     def _select_directory(self) -> None:
         """Select a directory of images to add to the annotation tool.
