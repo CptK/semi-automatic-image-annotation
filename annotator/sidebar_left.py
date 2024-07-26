@@ -225,7 +225,7 @@ class LeftSidebar(ctk.CTkFrame):
         Returns:
             A list of image file paths.
         """
-        # add all images in the root directory to the list, for all subdirectories, call the function recursively
+        # add all images in the root directory to the list, for all subdirectories, call function recursively
         image_paths = []
         for root, dirs, files in os.walk(root_dir):
             for file in files:
