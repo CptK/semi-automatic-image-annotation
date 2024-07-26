@@ -77,8 +77,8 @@ class RightSidebar(ctk.CTkFrame):
         next_button = ctk.CTkButton(self, text="Next", command=self.controller.next)
         next_button.pack(pady=(20, 0), padx=5, fill="x")
 
-        skip_button = ctk.CTkButton(self, text="Skip")
-        skip_button.pack(pady=(10, 20), padx=5, fill="x")
+        del_button = ctk.CTkButton(self, text="Delete", command=self.controller.delete_image)
+        del_button.pack(pady=(10, 20), padx=5, fill="x")
 
         # add checkbox and label for marking the image as ready
         self.ready_var = ctk.BooleanVar()

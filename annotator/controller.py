@@ -87,6 +87,11 @@ class Controller:
         self._store.add_images(paths)
         self._view.refresh_all()  # type: ignore
 
+    def delete_image(self):
+        """Delete the *current* image from the dataset."""
+        self._store.delete_image()
+        self._view.refresh_all()  # type: ignore
+
     def export(self, path: str, format: Literal["json", "csv", "yolo"], ready_only: bool, train_split: float):
         """Export the annotations to disk."""
         self._store.export(path, format, ready_only, train_split)
