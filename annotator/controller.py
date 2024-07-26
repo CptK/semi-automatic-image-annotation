@@ -82,6 +82,11 @@ class Controller:
         self._store.jump_to(idx)
         self._view.refresh_all()  # type: ignore
 
+    def add_images(self, paths: list[str]):
+        """Add images to the dataset."""
+        self._store.add_images(paths)
+        self._view.refresh_all()  # type: ignore
+
     def export(self, path: str, format: Literal["json", "csv", "yolo"], ready_only: bool, train_split: float):
         """Export the annotations to disk."""
         self._store.export(path, format, ready_only, train_split)

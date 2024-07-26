@@ -20,6 +20,9 @@ dependencies = [
     "ruff"
 ]
 
+[tool.setuptools]
+packages = ["annotator"]
+
 [tool.black]
 line-length = 110
 target-version = [

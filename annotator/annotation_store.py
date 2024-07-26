@@ -323,7 +323,7 @@ class SingleImage:
             labels.append(self.class_store.get_name(uid))
         return labels
 
-    def __dict__(self):
+    def to_dict(self):
         return {
             "file_path": self.path,
             "file_name": self.name,
@@ -447,6 +447,17 @@ class AnnotationStore:
         """Change the coordinates of a bounding box in the *current* image."""
         self.current.boxes[idx] = box
 
+    def add_images(self, paths: list[str]):
+        """Add images to the dataset.
+
+        Args:
+            paths: A list of paths to the image files.
+        """
+        for path in paths:
+            name = os.path.basename(path)
+            if not self.annotation_by_name(name):
+                self.annotations.append(SingleImage(path, name, self.class_store))
+
     @property
     def current(self) -> SingleImage:
         """The index of the *current* image in the dataset."""
@@ -479,7 +490,7 @@ class AnnotationStore:
 
     @property
     def to_json(self):
-        return [a.__dict__() for a in self.annotations]
+        return [a.to_dict() for a in self.annotations]
 
     @property
     def image_size(self):
