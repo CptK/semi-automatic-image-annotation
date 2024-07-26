@@ -1,15 +1,13 @@
 """Left sidebar for the annotator GUI."""
 
+import os
 from collections.abc import Callable
-
-import customtkinter as ctk
 from tkinter import filedialog
 
+import customtkinter as ctk
 from PIL import Image
 
 from annotator.controller import Controller
-
-import os
 
 
 class ListButton(ctk.CTkButton):
@@ -133,7 +131,7 @@ class LeftSidebarList(ctk.CTkScrollableFrame):
 
 class LeftSidebar(ctk.CTkFrame):
     """Left Sidebar of the annotator application containing a list of all files and a button for adding more.
-    
+
     Args:
         master: The parent widget.
         controller: The controller object.
@@ -162,7 +160,7 @@ class LeftSidebar(ctk.CTkFrame):
             bg_color="transparent",
             text_color="white",
             text="",
-            height=40
+            height=40,
         )
         self.add_images_button.pack(side="left", padx=5, pady=5)
 
@@ -175,7 +173,7 @@ class LeftSidebar(ctk.CTkFrame):
             bg_color="transparent",
             text_color="white",
             text="",
-            height=40
+            height=40,
         )
         self.add_directory_button.pack(side="right", fill="x", padx=5, pady=5)
 
@@ -199,7 +197,7 @@ class LeftSidebar(ctk.CTkFrame):
 
     def _select_directory(self) -> None:
         """Select a directory of images to add to the annotation tool.
-        
+
         Opens a file dialog to select a directory of images.
         """
         directory = filedialog.askdirectory(title="Select Directory")
