@@ -323,7 +323,7 @@ class SingleImage:
             labels.append(self.class_store.get_name(uid))
         return labels
 
-    def __dict__(self):
+    def to_dict(self):
         return {
             "file_path": self.path,
             "file_name": self.name,
@@ -490,7 +490,7 @@ class AnnotationStore:
 
     @property
     def to_json(self):
-        return [a.__dict__() for a in self.annotations]
+        return [a.to_dict() for a in self.annotations]
 
     @property
     def image_size(self):
