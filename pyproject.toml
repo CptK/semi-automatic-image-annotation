@@ -20,6 +20,12 @@ dependencies = [
     "ruff"
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+]
+
 [tool.setuptools]
 packages = ["annotator"]
 
@@ -59,11 +65,11 @@ ignore-names = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "-v --color=yes --cov=pyrate --doctest-modules"
+addopts = "-v --color=yes --cov=annotator --doctest-modules"
 junit_family = "xunit2"
 testpaths = [
     # for the doctests:
-    "pyrate",
+    "annotator",
     # for the actual tests:
     "tests"
 ]
@@ -75,7 +81,6 @@ filterwarnings = [
     "error",
     "error::DeprecationWarning",
     "error::PendingDeprecationWarning",
-    "ignore:The height, width, and precision:rasterio.errors.RasterioDeprecationWarning",  # See https://github.com/rasterio/rasterio/issues/2466
 ]
 
 [tool.coverage.run]
