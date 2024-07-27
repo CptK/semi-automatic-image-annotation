@@ -1,37 +1,41 @@
 """A module for storing and managing `SingleImage` objects."""
 
 import os
-
 from uuid import UUID
 
-from annotator.store.single_image import SingleImage
-from annotator.store.classes_store import ClassesStore
 from annotator.model.base_model import DetectionModel
+from annotator.store.classes_store import ClassesStore
+from annotator.store.single_image import SingleImage
 
 
 class ImageStore:
     """A class for storing and managing `SingleImage` objects."""
 
-    def __init__(self, class_store: ClassesStore, detection_model: DetectionModel, images: list[SingleImage | str] = []):
+    def __init__(
+        self, class_store: ClassesStore, detection_model: DetectionModel, images: list[SingleImage | str] = []
+    ):
         self._class_store = class_store
         self._detection_model = detection_model
         self._images: list[SingleImage] = []
         self.add_images(images)
         self._current_uuid: UUID = self._images[0].uuid
 
-    def add_images(self, images: list[SingleImage | str] | SingleImage | str):
+    def add_images(self, images: list[SingleImage | str] | SingleImage | str) -> list[UUID]:
         """Add images to the store.
 
         Args:
-            images: A list of `SingleImage` objects or image paths, or a single `SingleImage` object or image path.
+            images: A list of `SingleImage` or image paths, or a single `SingleImage` or as single image path.
         """
         if not isinstance(images, list):
             images = [images]
 
+        new_uuids = []
         for img in images:
             if isinstance(img, str):
                 img = SingleImage(img, os.path.basename(img), self._class_store)
             self._images.append(img)
+            new_uuids.append(img.uuid)
+        return new_uuids
 
     def delete_images(self, uuid: UUID | list[UUID]):
         """Delete images from the store.
@@ -45,7 +49,9 @@ class ImageStore:
             uuid = [uuid]
 
         if self._current_uuid in uuid:
-            current_idx = self._images.index(next(img for img in self._images if img.uuid == self._current_uuid))
+            current_idx = self._images.index(
+                next(img for img in self._images if img.uuid == self._current_uuid)
+            )
             # make sure we select the next uuid from an index that is not out of bounds
             new_idx = max(current_idx + 1, len(self._images) - 1)
             self._current_uuid = self._images[new_idx].uuid
@@ -61,7 +67,7 @@ class ImageStore:
 
     def next(self):
         """Move to the next image in the dataset. If the end of the dataset is reached, do nothing.
-        
+
         If the next image has not been seen before, initialize it with automatic annotation.
         """
         current_idx = next(i for i, img in enumerate(self._images) if img.uuid == self._current_uuid)
@@ -86,7 +92,7 @@ class ImageStore:
 
         If a new label is provided, the bounding boxes are assigned to the new label. Otherwise, the bounding
         boxes are removed.
-        
+
         Args:
             label_uid: The unique identifier of the label to remove.
             new_label_uid: The unique identifier of the new label to assign to the bounding boxes.
@@ -101,22 +107,25 @@ class ImageStore:
     def active_uuid(self) -> UUID:
         """The UUID of the active image."""
         return self._current_uuid
-    
+
     @property
     def active_image(self) -> SingleImage:
         """The active image."""
         return self[self.active_uuid]
-    
+
     @property
     def image_names(self) -> list[str]:
         """A list of the image names."""
         return [img.name for img in self._images]
 
+    def to_json(self):
+        return [img.to_dict() for img in self._images]
+
     def __getitem__(self, uuid: UUID) -> SingleImage:
         return next(img for img in self._images if img.uuid == uuid)
-    
+
     def __len__(self) -> int:
         return len(self._images)
-    
+
     def __iter__(self):
         return iter(self._images)

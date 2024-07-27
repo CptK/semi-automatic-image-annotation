@@ -2,15 +2,15 @@
 
 import json
 import os
-from typing import  Literal
+from typing import Literal, cast
 
 import yaml
 from PIL import Image
 
+from annotator.model.yolo_detection_model import YOLODetectionModel
 from annotator.store.classes_store import ClassesStore
 from annotator.store.image_store import ImageStore
 from annotator.store.single_image import SingleImage
-from annotator.model.yolo_detection_model import YOLODetectionModel
 
 
 class AnnotationStore:
@@ -25,7 +25,9 @@ class AnnotationStore:
     def __init__(self, img_paths: list[str], model, available_labels: list[str]):
         self.class_store = ClassesStore(available_labels)
         self.detection_model = YOLODetectionModel(model, available_labels)
-        self.image_store = ImageStore(self.class_store, self.detection_model, img_paths)
+        self.image_store = ImageStore(
+            self.class_store, self.detection_model, cast(list[SingleImage | str], img_paths)
+        )
 
     def save(self, path: str):
         """Save the annotations to a JSON file."""
@@ -40,7 +42,7 @@ class AnnotationStore:
             only_ready: If True, only export images that have been marked as ready.
             train_split: The fraction of the data to use for training in the YOLO format.
         """
-        data = [a for a in self.annotations if not only_ready or a.ready]
+        data = [a for a in self.image_store if not only_ready or a.ready]
         if format.lower() == "csv":
             self._export_csv(path, data)
         elif format.lower() == "json":
@@ -49,20 +51,6 @@ class AnnotationStore:
             train = data[: int(len(data) * train_split)]
             test = data[int(len(data) * train_split) :]
             self._export_yolo(path, train, test)
-
-    def annotation_by_name(self, name):
-        """Get the index of the annotation with the specified file name.
-
-        Args:
-            name: The file name of the image.
-
-        Returns:
-            The index of the annotation with the specified file name, or None if not found.
-        """
-        for i, a in enumerate(self.annotations):
-            if a.name == name:
-                return i
-        return None
 
     def change_label(self, idx, label_uid: int):
         """Change the label of a bounding box in the *current* image."""
@@ -104,20 +92,12 @@ class AnnotationStore:
         return self.current.ready
 
     @property
-    def to_json(self):
-        return [a.to_dict() for a in self.annotations]
-
-    @property
     def image_size(self):
         return self.current.img_size
 
-    def __getitem__(self, idx: int) -> SingleImage:
-        """Get the image at the given index."""
-        return self.annotations[idx]
-
     def __len__(self) -> int:
         """The number of images in the dataset."""
-        return len(self.annotations)
+        return len(self.image_store)
 
     def _export_csv(self, path: str, data: list[SingleImage], delimiter: str = ";"):
         """Export the annotations to a CSV file.
@@ -153,7 +133,7 @@ class AnnotationStore:
             raise ValueError("Export path must be a JSON file.")
 
         with open(path, "w") as f:
-            json.dump(self.to_json, f)
+            json.dump(self.image_store.to_json(), f)
 
     def _export_yolo(self, path: str, train: list[SingleImage], test: list[SingleImage]):
         """Export the annotations to the YOLO format.
@@ -194,7 +174,7 @@ class AnnotationStore:
             split: The split to process (train or test).
         """
         for i, data in enumerate(raw_data):
-            img: Image.Image = Image.open(os.path.join(self.data_path, data.name))
+            img: Image.Image = Image.open(data.path)
             img = img.resize((640, 640))
             img.save(os.path.join(path, split, "images", f"{i}.jpg"))
 
@@ -223,9 +203,8 @@ class AnnotationStore:
         new_annotations = [SingleImage(a["file_path"], a["file_name"], self.class_store) for a in data]
 
         if append:
-            self.annotations.extend(new_annotations)
+            self.image_store.add_images(cast(list[SingleImage | str], new_annotations))
         else:
-            self.annotations = new_annotations
-            # self.current_index = 0
-            # self.jump_to(self.current_index)
-            raise NotImplementedError
+            self.image_store = ImageStore(
+                self.class_store, self.detection_model, cast(list[SingleImage | str], new_annotations)
+            )

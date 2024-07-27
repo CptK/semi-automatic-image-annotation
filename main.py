@@ -1,12 +1,12 @@
 """Main module for the annotator application."""
 
+import os
+
 from ultralytics import YOLO
 
-from annotator.store.annotation_store import AnnotationStore
 from annotator.annotation_ui import ImageAnnotationGUI
 from annotator.controller import Controller
-
-import os
+from annotator.store.annotation_store import AnnotationStore
 
 
 def main():

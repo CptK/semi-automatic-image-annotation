@@ -1,9 +1,8 @@
 """A module for storing annotations for a single image."""
 
-from PIL import Image
+from uuid import UUID, uuid4
 
-from uuid import uuid4
-from uuid import UUID
+from PIL import Image
 
 from annotator.model.base_model import DetectionModel
 from annotator.store.classes_store import ClassesStore
@@ -66,7 +65,7 @@ class SingleImage:
 
     def change_label(self, idx: int, label_uid: int) -> None:
         """Change the label of a bounding box in the image.
-        
+
         Args:
             idx: The index of the bounding box to change.
             label_uid: The unique identifier of the new label.
@@ -75,7 +74,7 @@ class SingleImage:
 
     def delete(self, idx: int) -> None:
         """Delete a bounding box from the image.
-        
+
         Args:
             idx: The index of the bounding box to delete.
         """
@@ -105,10 +104,10 @@ class SingleImage:
             else:
                 uids.append(self.class_store.get_default_uid())
         return uids
-    
+
     def delete_all_with_label(self, label_uid: int) -> None:
         """Delete all bounding boxes with a certain label from the image.
-        
+
         Args:
             label_uid: The unique identifier of the label to delete.
         """
@@ -117,7 +116,7 @@ class SingleImage:
 
     def change_all_labels(self, old_label_uid: int, new_label_uid: int) -> None:
         """Change all labels of a certain type to a new label for the image.
-        
+
         Args:
             old_label_uid: The unique identifier of the label to change.
             new_label_uid: The unique identifier of the new label.
@@ -147,7 +146,7 @@ class SingleImage:
             "ready": self.ready,
             "skip": self.skip,
         }
-    
+
     @property
     def uuid(self) -> UUID:
         return self.__uuid

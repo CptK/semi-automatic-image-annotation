@@ -3,13 +3,12 @@
 import os
 from collections.abc import Callable
 from tkinter import filedialog
+from uuid import UUID
 
 import customtkinter as ctk
 from PIL import Image
 
 from annotator.controller import Controller
-
-from uuid import UUID
 
 
 class ListButton(ctk.CTkButton):
@@ -55,7 +54,9 @@ class ListItem(ctk.CTkFrame):
         ready: Whether the item is marked as ready.
     """
 
-    def __init__(self, master, text: str, command: Callable, active: bool, ready: bool, uuid: UUID, **kwargs) -> None:
+    def __init__(
+        self, master, text: str, command: Callable, active: bool, ready: bool, uuid: UUID, **kwargs
+    ) -> None:
         super().__init__(master, **kwargs)
         self.uuid = uuid
         self.button = ListButton(self, text=text, command=command, active=active)
@@ -133,6 +134,7 @@ class LeftSidebarList(ctk.CTkScrollableFrame):
                 command=lambda uuid=uuid: self.controller.jump_to(uuid),
                 active=uuid == self.controller.active_uuid(),
                 ready=self.controller.is_ready(uuid),
+                uuid=uuid,
             )
             button.pack(fill="x", padx=5, pady=5)
             self.list_items.append(button)
@@ -219,10 +221,8 @@ class LeftSidebar(ctk.CTkFrame):
         Args:
             files: A list of image file paths to add.
         """
-        n_old_images = len(self.controller.image_names())
-        self.controller.add_images(files)
-        new_indices = list(range(n_old_images, len(self.controller.image_names())))
-        self.list.add_items([os.path.basename(file) for file in files], new_indices)
+        added_uuids = self.controller.add_images(files)
+        self.list.add_items([os.path.basename(file) for file in files], added_uuids)
 
     def find_all_images(self, root_dir: str, extensions: list[str]) -> list[str]:
         """Find all images in a directory and its subdirectories.

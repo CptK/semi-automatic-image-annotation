@@ -1,11 +1,10 @@
 """The controller module for the annotator."""
 
-from typing import Any, Literal
+from typing import Any, Literal, cast
+from uuid import UUID
 
 from annotator.store.annotation_store import AnnotationStore, ClassesStore, SingleImage
 from annotator.ui import UI
-
-from uuid import UUID
 
 
 class Controller:
@@ -29,7 +28,7 @@ class Controller:
     def classes_store(self) -> ClassesStore:
         """The class store for the dataset."""
         return self._store.class_store
-    
+
     def image_store(self):
         """The image store for the dataset."""
         return self._store.image_store
@@ -87,10 +86,11 @@ class Controller:
         self._store.image_store.jump_to(uuid)
         self._view.refresh_all()  # type: ignore
 
-    def add_images(self, paths: list[str]):
+    def add_images(self, paths: list[str]) -> list[UUID]:
         """Add images to the dataset."""
-        self._store.image_store.add_images(paths)
+        new_uuids = self._store.image_store.add_images(cast(list[SingleImage | str], paths))
         self._view.refresh_all()  # type: ignore
+        return new_uuids
 
     def delete_image(self):
         """Delete the *current* image from the dataset."""
