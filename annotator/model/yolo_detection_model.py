@@ -10,7 +10,8 @@ class YOLODetectionModel(DetectionModel):
 
     The ouput format of the model should be a list of dictionaries, each containing the keys
     - 'box' for the bounding box coordinates in the format [x1, y1, x2, y2],
-    - 'boxn' for the normalized bounding box coordinates in the format [x1, y1, x2, y2],
+    - 'boxn' for the normalized bounding box coordinates in the format [center_x, center_y, width, height]
+        all normalized to the range [0, 1],
     - 'label' for the class label,
     - 'confidence' for the detection confidence.
 

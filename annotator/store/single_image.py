@@ -25,7 +25,6 @@ class SingleImage:
             [center_x, center_y, width, height], where all values are normalized to the range [0, 1].
         labels: A list of class labels corresponding to the bounding boxes.
         ready: Whether the image has been marked as ready for export.
-        skip: Whether the image should be skipped during annotation.
         auto_intialized: Whether the image has been automatically initialized with annotations.
         model: The object detection model to use for automatic annotation.
         available_labels: A list of available class labels.
@@ -39,10 +38,10 @@ class SingleImage:
         self.boxes: list = []
         self.label_uids: list[int] = []
         self.ready = False
-        self.skip = False
         self.auto_intialized = False
         img = Image.open(self.path)
         self.img_size = img.size
+        img.close()
         self.__uuid = uuid4()
 
     def init(self, model: DetectionModel | None):
@@ -53,6 +52,7 @@ class SingleImage:
             try:
                 img = Image.open(self.path)
                 res = model(img)
+                img.close()
                 self.boxes = [r["boxn"] for r in res]
                 self.label_uids = self.labels_to_uids([r["label"] for r in res])
                 self.auto_intialized = True
@@ -144,7 +144,6 @@ class SingleImage:
             "boxes": self.boxes,
             "labels": self.uids_to_labels(self.label_uids),
             "ready": self.ready,
-            "skip": self.skip,
         }
 
     @property
