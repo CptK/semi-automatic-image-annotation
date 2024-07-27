@@ -9,6 +9,8 @@ from PIL import Image
 
 from annotator.controller import Controller
 
+from uuid import UUID
+
 
 class ListButton(ctk.CTkButton):
     """Button for the left sidebar list items.
@@ -53,8 +55,9 @@ class ListItem(ctk.CTkFrame):
         ready: Whether the item is marked as ready.
     """
 
-    def __init__(self, master, text: str, command: Callable, active: bool, ready: bool, **kwargs) -> None:
+    def __init__(self, master, text: str, command: Callable, active: bool, ready: bool, uuid: UUID, **kwargs) -> None:
         super().__init__(master, **kwargs)
+        self.uuid = uuid
         self.button = ListButton(self, text=text, command=command, active=active)
         label_text = "✓" if ready else " "
         self.label = ctk.CTkLabel(
@@ -91,13 +94,14 @@ class LeftSidebarList(ctk.CTkScrollableFrame):
     def setup(self) -> None:
         """Set up the left sidebar list items."""
         self.list_items: list[ListItem] = []
-        for i, name in enumerate(self.controller.image_names()):
+        for img in self.controller.image_store():
             button = ListItem(
                 self,
-                text=name,
-                command=lambda i=i: self.controller.jump_to(i),
-                active=i == self.controller.current_index(),
-                ready=self.controller[i].ready,
+                text=img.name,
+                command=lambda uuid=img.uuid: self.controller.jump_to(uuid),
+                active=img.uuid == self.controller.active_uuid(),
+                ready=img.ready,
+                uuid=img.uuid,
             )
             button.pack(fill="x", padx=5, pady=5)
             self.list_items.append(button)
@@ -105,33 +109,33 @@ class LeftSidebarList(ctk.CTkScrollableFrame):
     def update(self) -> None:
         """Update the left sidebar list items."""
         if len(self.list_items) == len(self.controller.image_names()):
-            for i, list_item in enumerate(self.list_items):
+            for list_item in self.list_items:
                 list_item.update(
-                    active=i == self.controller.current_index(),
-                    ready=self.controller[i].ready,
+                    active=list_item.uuid == self.controller.active_uuid(),
+                    ready=self.controller.is_ready(list_item.uuid),
                 )
         else:
             for item in self.list_items:
                 item.destroy()
             self.setup()
 
-    def add_items(self, names: list[str], idx: list[int]) -> None:
+    def add_items(self, names: list[str], uuids: list[UUID]) -> None:
         """Add items to the left sidebar list.
 
         Args:
             names: A list of file names to add.
             idx: A list of indices to add.
         """
-        for i, name in zip(idx, names):
+        for uuid, name in zip(uuids, names):
             button = ListItem(
                 self,
                 text=name,
-                command=lambda i=i: self.controller.jump_to(i),
-                active=i == self.controller.current_index(),
-                ready=self.controller[i].ready,
+                command=lambda uuid=uuid: self.controller.jump_to(uuid),
+                active=uuid == self.controller.active_uuid(),
+                ready=self.controller.is_ready(uuid),
             )
             button.pack(fill="x", padx=5, pady=5)
-            self.list_items.insert(i, button)
+            self.list_items.append(button)
 
 
 class LeftSidebar(ctk.CTkFrame):
