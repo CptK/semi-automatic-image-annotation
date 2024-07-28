@@ -18,7 +18,9 @@ class ImageStore:
         self._detection_model = detection_model
         self._images: list[SingleImage] = []
         self.add_images(images)
-        self._current_uuid: UUID = self._images[0].uuid
+        self._current_uuid: UUID | None = self._images[0].uuid if len(self._images) > 0 else None
+        if self._current_uuid is not None:
+            self.active_image.init(self._detection_model)
 
     def add_images(self, images: list[SingleImage | str] | SingleImage | str) -> list[UUID]:
         """Add images to the store.
@@ -29,12 +31,19 @@ class ImageStore:
         if not isinstance(images, list):
             images = [images]
 
+        starting_empty = len(self._images) == 0
+
         new_uuids = []
         for img in images:
             if isinstance(img, str):
                 img = SingleImage(img, os.path.basename(img), self._class_store)
             self._images.append(img)
             new_uuids.append(img.uuid)
+
+        if starting_empty and len(new_uuids) > 0:
+            self._current_uuid = new_uuids[0]
+            self.active_image.init(self._detection_model)
+
         return new_uuids
 
     def delete_images(self, uuid: UUID | list[UUID]):
@@ -48,21 +57,37 @@ class ImageStore:
         if not isinstance(uuid, list):
             uuid = [uuid]
 
-        if self._current_uuid in uuid:
+        if not all(u in [img.uuid for img in self._images] for u in uuid):
+            raise ValueError("One or more UUIDs are not in the image store.")
+        
+        if len(uuid) != len(set(uuid)):
+            raise ValueError("Duplicate UUIDs provided.")
+
+        if self._current_uuid in uuid and len(self._images) > 1:
             current_idx = self._images.index(
                 next(img for img in self._images if img.uuid == self._current_uuid)
-            )
+            )  # pragma: no cover
+
+            # here we handle the current uuid, so we remove it from the list of uuids to delete
+            uuid = [u for u in uuid if u != self._current_uuid]
+
             # make sure we select the next uuid from an index that is not out of bounds
-            new_idx = max(current_idx + 1, len(self._images) - 1)
+            new_idx = current_idx + 1 if current_idx < len(self._images) - 1 else current_idx - 1
             self._current_uuid = self._images[new_idx].uuid
             del self._images[current_idx]
-            # make sure that the next image could also be among the ones to delete
-            self.delete_images(uuid[1:])
+
+            # the uuid we handled here as already been removed from the list of uuids to delete
+            self.delete_images(uuid)
         else:
             self._images = [img for img in self._images if img.uuid not in uuid]
+            if len(self._images) == 0:
+                self._current_uuid = None
 
     def activate_image(self, uuid: UUID):
         """Activate an image by its UUID."""
+        if uuid not in [img.uuid for img in self._images]:
+            raise ValueError("UUID not found in image store.")
+
         self._current_uuid = uuid
 
     def next(self):
@@ -70,7 +95,14 @@ class ImageStore:
 
         If the next image has not been seen before, initialize it with automatic annotation.
         """
-        current_idx = next(i for i, img in enumerate(self._images) if img.uuid == self._current_uuid)
+        if self._current_uuid is None and len(self._images) > 0:
+            self.jump_to(self._images[0].uuid)
+            return
+        
+        if self._current_uuid is None:
+            return
+
+        current_idx = next(i for i, img in enumerate(self._images) if img.uuid == self._current_uuid)  # pragma: no cover
         if current_idx < len(self._images) - 1:
             uuid = self._images[current_idx + 1].uuid
             self.jump_to(uuid)
@@ -82,7 +114,13 @@ class ImageStore:
 
         Args:
             uuid: The unique identifier of the image.
+
+        Raises:
+            ValueError: If the UUID is not found in the image store.
         """
+        if uuid not in [img.uuid for img in self._images]:
+            raise ValueError("UUID not found in image store.")
+
         self._current_uuid = uuid
         if not self.active_image.auto_intialized:
             self.active_image.init(self._detection_model)
@@ -105,13 +143,17 @@ class ImageStore:
 
     @property
     def active_uuid(self) -> UUID:
-        """The UUID of the active image."""
+        """The UUID of the active image.
+        
+        This will always point to an image, unless the store is empty. In that case, it will be `None`. In
+        other words, there can never be a `None` situation where the store is not empty.
+        """
         return self._current_uuid
 
     @property
     def active_image(self) -> SingleImage:
         """The active image."""
-        return self[self.active_uuid]
+        return self[self.active_uuid] if self.active_uuid is not None else None
 
     @property
     def image_names(self) -> list[str]:
@@ -122,7 +164,10 @@ class ImageStore:
         return [img.to_dict() for img in self._images]
 
     def __getitem__(self, uuid: UUID) -> SingleImage:
-        return next(img for img in self._images if img.uuid == uuid)
+        if uuid not in [img.uuid for img in self._images]:
+            raise ValueError("UUID not found in image store.")
+
+        return next(img for img in self._images if img.uuid == uuid)  # pragma: no cover
 
     def __len__(self) -> int:
         return len(self._images)

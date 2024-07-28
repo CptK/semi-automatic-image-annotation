@@ -14,7 +14,7 @@ from annotator.store.single_image import SingleImage
 class TestSingleImage(unittest.TestCase):
 
     def setUp(self):
-        self.img_name = "test_img.JPEG"
+        self.img_name = "test_img_1.JPEG"
         self.img_path = os.path.abspath(
             os.path.join(os.path.dirname(__file__), "..", "images", self.img_name)
         )
