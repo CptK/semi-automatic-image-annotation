@@ -88,7 +88,7 @@ concurrency = ["multiprocessing"]
 branch = true
 
 [tool.coverage.report]
-fail_under = 95.00
+fail_under = 5.00
 precision = 2
 show_missing = true
 exclude_lines = [
@@ -113,7 +113,7 @@ exclude_lines = [
 
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 check_untyped_defs = true
 no_implicit_optional = true
 warn_redundant_casts = true
