@@ -82,7 +82,7 @@ class RightSidebar(ctk.CTkFrame):
 
         # add checkbox and label for marking the image as ready
         self.ready_var = ctk.BooleanVar()
-        self.ready_var.set(self.controller.ready())
+        self.ready_var.set(self.controller.is_ready(self.controller.active_uuid()))
         ready_checkbox = ctk.CTkCheckBox(
             self, text="Mark as ready", variable=self.ready_var, command=self.mark_ready
         )
@@ -94,7 +94,7 @@ class RightSidebar(ctk.CTkFrame):
     def update(self) -> None:
         """Update the right sidebar layout."""
         self.item_list.update()
-        self.ready_var.set(self.controller.ready())
+        self.ready_var.set(self.controller.is_ready(self.controller.active_uuid()))
 
     def mark_ready(self) -> None:
         """Mark the current image as ready."""

@@ -1,8 +1,9 @@
 """The controller module for the annotator."""
 
-from typing import Any, Literal
+from typing import Any, Literal, cast
+from uuid import UUID
 
-from annotator.annotation_store import AnnotationStore, ClassesStore, SingleImage
+from annotator.store.annotation_store import AnnotationStore, ClassesStore, SingleImage
 from annotator.ui import UI
 
 
@@ -28,9 +29,13 @@ class Controller:
         """The class store for the dataset."""
         return self._store.class_store
 
-    def current_index(self) -> int:
-        """The index of the *current* image in the dataset."""
-        return self._store.current_index
+    def image_store(self):
+        """The image store for the dataset."""
+        return self._store.image_store
+
+    def active_uuid(self):
+        """The unique identifier of the *current* image."""
+        return self._store.image_store.active_uuid
 
     def current_boxes(self):
         """The bounding boxes of the *current* image."""
@@ -49,7 +54,7 @@ class Controller:
 
     def image_names(self):
         """A list of file names of all images in the dataset."""
-        return self._store.image_names
+        return self._store.image_store.image_names
 
     def current(self) -> SingleImage:
         """The index of the *current* image in the dataset."""
@@ -63,33 +68,33 @@ class Controller:
         """The size of the *current* image."""
         return self._store.image_size
 
-    def ready(self):
-        """Whether the *current* image has been marked as ready for export."""
-        return self._store.ready
+    def is_ready(self, uuid: UUID):
+        return self._store.image_store[uuid].ready
 
     def mark_ready(self):
         """Mark the *current* image as ready for export."""
-        self._store.mark_ready()
+        self._store.image_store.active_image.ready = True  # type: ignore
         self._view.refresh_left_sidebar()  # type: ignore
 
     def next(self):
         """Move to the next image in the dataset."""
-        self._store.next()
+        self._store.image_store.next()
         self._view.refresh_all()  # type: ignore
 
-    def jump_to(self, idx: int):
-        """Jump to a specific image index."""
-        self._store.jump_to(idx)
+    def jump_to(self, uuid: UUID):
+        """Jump to a specific image uuid."""
+        self._store.image_store.jump_to(uuid)
         self._view.refresh_all()  # type: ignore
 
-    def add_images(self, paths: list[str]):
+    def add_images(self, paths: list[str]) -> list[UUID]:
         """Add images to the dataset."""
-        self._store.add_images(paths)
+        new_uuids = self._store.image_store.add_images(cast(list[SingleImage | str], paths))
         self._view.refresh_all()  # type: ignore
+        return new_uuids
 
     def delete_image(self):
         """Delete the *current* image from the dataset."""
-        self._store.delete_image()
+        self._store.image_store.delete_images(self.active_uuid())
         self._view.refresh_all()  # type: ignore
 
     def export(self, path: str, format: Literal["json", "csv", "yolo"], ready_only: bool, train_split: float):
@@ -116,8 +121,8 @@ class Controller:
             self._view.redraw_content(only_boxes=True)  # type: ignore
 
     def delete(self, idx: int):
-        """Delete the label for the given index."""
-        self._store.delete(idx)
+        """Delete the label for the bounding box at the given index."""
+        self._store.image_store.active_image.delete(idx)  # type: ignore
         self._view.redraw_content(only_boxes=True)  # type: ignore
 
     def class_iter(self):
@@ -132,10 +137,7 @@ class Controller:
             change_classes_uid: The class to change bbox labels to. If None, the bboxes are deleted.
             redraw: Whether to redraw the content.
         """
-        if change_classes_uid is None:
-            self._store.delete_all_with_label(uid)
-        else:
-            self._store.change_all_labels(uid, change_classes_uid)
+        self._store.image_store.remove_label(uid, change_classes_uid)
         self._store.class_store.delete_class(uid)
         if redraw:
             self._view.redraw_content(only_boxes=True)  # type: ignore
@@ -188,11 +190,3 @@ class Controller:
     def get_class_uid(self, name: str) -> int:
         """Get the unique identifier of a class."""
         return self._store.class_store.get_uid(name)
-
-    def __len__(self) -> int:
-        """The number of images in the dataset."""
-        return len(self._store)
-
-    def __getitem__(self, idx: int) -> SingleImage:
-        """Get the image at the given index."""
-        return self._store[idx]
