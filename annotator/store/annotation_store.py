@@ -69,7 +69,7 @@ class AnnotationStore:
     @property
     def current(self) -> SingleImage:
         """The index of the *current* image in the dataset."""
-        return self.image_store.active_image
+        return self.image_store.active_image  # type: ignore
 
     @property
     def file_path(self):

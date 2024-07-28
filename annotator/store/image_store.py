@@ -19,7 +19,7 @@ class ImageStore:
         self._images: list[SingleImage] = []
         self.add_images(images)
         self._current_uuid: UUID | None = self._images[0].uuid if len(self._images) > 0 else None
-        if self._current_uuid is not None:
+        if self.active_image is not None:
             self.active_image.init(self._detection_model)
 
     def add_images(self, images: list[SingleImage | str] | SingleImage | str) -> list[UUID]:
@@ -42,7 +42,7 @@ class ImageStore:
 
         if starting_empty and len(new_uuids) > 0:
             self._current_uuid = new_uuids[0]
-            self.active_image.init(self._detection_model)
+            self.active_image.init(self._detection_model)  # type: ignore
 
         return new_uuids
 
@@ -59,7 +59,7 @@ class ImageStore:
 
         if not all(u in [img.uuid for img in self._images] for u in uuid):
             raise ValueError("One or more UUIDs are not in the image store.")
-        
+
         if len(uuid) != len(set(uuid)):
             raise ValueError("Duplicate UUIDs provided.")
 
@@ -98,11 +98,13 @@ class ImageStore:
         if self._current_uuid is None and len(self._images) > 0:
             self.jump_to(self._images[0].uuid)
             return
-        
+
         if self._current_uuid is None:
             return
 
-        current_idx = next(i for i, img in enumerate(self._images) if img.uuid == self._current_uuid)  # pragma: no cover
+        current_idx = next(
+            i for i, img in enumerate(self._images) if img.uuid == self._current_uuid
+        )  # pragma: no cover
         if current_idx < len(self._images) - 1:
             uuid = self._images[current_idx + 1].uuid
             self.jump_to(uuid)
@@ -122,7 +124,7 @@ class ImageStore:
             raise ValueError("UUID not found in image store.")
 
         self._current_uuid = uuid
-        if not self.active_image.auto_intialized:
+        if self.active_image is not None and not self.active_image.auto_intialized:
             self.active_image.init(self._detection_model)
 
     def remove_label(self, label_uid: int, new_label_uid: int | None = None):
@@ -142,17 +144,17 @@ class ImageStore:
                 img.delete_all_with_label(label_uid)
 
     @property
-    def active_uuid(self) -> UUID:
+    def active_uuid(self) -> UUID | None:
         """The UUID of the active image.
-        
+
         This will always point to an image, unless the store is empty. In that case, it will be `None`. In
         other words, there can never be a `None` situation where the store is not empty.
         """
         return self._current_uuid
 
     @property
-    def active_image(self) -> SingleImage:
-        """The active image."""
+    def active_image(self) -> SingleImage | None:
+        """The active image. If the store is empty, this will be `None`."""
         return self[self.active_uuid] if self.active_uuid is not None else None
 
     @property

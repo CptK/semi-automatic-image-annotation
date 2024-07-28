@@ -73,7 +73,7 @@ class Controller:
 
     def mark_ready(self):
         """Mark the *current* image as ready for export."""
-        self._store.image_store.active_image.ready = True
+        self._store.image_store.active_image.ready = True  # type: ignore
         self._view.refresh_left_sidebar()  # type: ignore
 
     def next(self):
@@ -122,7 +122,7 @@ class Controller:
 
     def delete(self, idx: int):
         """Delete the label for the bounding box at the given index."""
-        self._store.image_store.active_image.delete(idx)
+        self._store.image_store.active_image.delete(idx)  # type: ignore
         self._view.redraw_content(only_boxes=True)  # type: ignore
 
     def class_iter(self):
