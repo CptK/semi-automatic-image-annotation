@@ -52,53 +52,6 @@ class AnnotationStore:
             test = data[int(len(data) * train_split) :]
             self._export_yolo(path, train, test)
 
-    def change_label(self, idx, label_uid: int):
-        """Change the label of a bounding box in the *current* image."""
-        self.current.change_label(idx, label_uid)
-
-    def add_box(self, box, label_uid: int | None = None):
-        """Add a bounding box to the *current* image."""
-        if label_uid is None:
-            label_uid = self.class_store.get_default_uid()
-        self.current.add_box(box, label_uid)
-
-    def change_box(self, idx, box):
-        """Change the coordinates of a bounding box in the *current* image."""
-        self.current.boxes[idx] = box
-
-    @property
-    def current(self) -> SingleImage:
-        """The index of the *current* image in the dataset."""
-        return self.image_store.active_image  # type: ignore
-
-    @property
-    def file_path(self):
-        """The absolute file path of the *current* image."""
-        return self.current.path
-
-    @property
-    def boxes(self):
-        """The bounding boxes of the *current* image."""
-        return self.current.boxes
-
-    @property
-    def label_uids(self):
-        """The class labels of the *current* image."""
-        return self.current.label_uids
-
-    @property
-    def ready(self):
-        """Whether the *current* image has been marked as ready for export."""
-        return self.current.ready
-
-    @property
-    def image_size(self):
-        return self.current.img_size
-
-    def __len__(self) -> int:
-        """The number of images in the dataset."""
-        return len(self.image_store)
-
     def _export_csv(self, path: str, data: list[SingleImage], delimiter: str = ";"):
         """Export the annotations to a CSV file.
 

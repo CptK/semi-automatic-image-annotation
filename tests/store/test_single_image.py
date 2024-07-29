@@ -80,12 +80,23 @@ class TestSingleImage(unittest.TestCase):
     def test_delete_box(self):
         self.img.add_box([0.1, 0.1, 0.2, 0.2], 1)
         self.img.add_box([0.3, 0.3, 0.4, 0.4], 0)
-        self.img.delete(0)
+        self.img.delete_box(0)
         self.assertEqual(self.img.boxes, [[0.3, 0.3, 0.4, 0.4]])
         self.assertEqual(self.img.label_uids, [0])
-        self.img.delete(0)
+        self.img.delete_box(0)
         self.assertEqual(self.img.boxes, [])
         self.assertEqual(self.img.label_uids, [])
+
+    def test_change_box(self):
+        self.img.add_box([0.1, 0.1, 0.2, 0.2], 1)
+        self.img.change_box(0, [0.3, 0.3, 0.4, 0.4])
+        self.assertEqual(self.img.boxes, [[0.3, 0.3, 0.4, 0.4]])
+        self.assertEqual(self.img.label_uids, [1])
+
+    def test_change_box_invalid(self):
+        self.img.add_box([0.1, 0.1, 0.2, 0.2], 1)
+        with self.assertRaises(ValueError):
+            self.img.change_box(0, [0.3, 0.3, 0.4])
 
     def test_labels_to_uids(self):
         self.assertEqual(self.img.labels_to_uids([]), [])

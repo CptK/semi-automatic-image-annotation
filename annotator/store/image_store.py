@@ -83,6 +83,29 @@ class ImageStore:
             if len(self._images) == 0:
                 self._current_uuid = None
 
+    def change_image_annotation(
+        self, uuid: UUID, box_idx: int, new_box: list[float] | None = None, new_label_uid: int | None = None
+    ):
+        """Change the annotation of a bounding box in an image.
+
+        Args:
+            uuid: The unique identifier of the image.
+            box_idx: The index of the bounding box to change.
+            new_box: The new bounding box coordinates as list with entries [center_x, center_y, width, height]
+            new_label_uid: The unique identifier of the new label.
+        """
+        if uuid not in [img.uuid for img in self._images]:
+            raise ValueError("UUID not found in image store.")
+
+        if new_box is None and new_label_uid is None:
+            raise Warning("Attempted to change annotation without providing new box or label.")
+
+        if new_box is not None:
+            self[uuid].change_box(box_idx, new_box)
+
+        if new_label_uid is not None:
+            self[uuid].change_label(box_idx, new_label_uid)
+
     def activate_image(self, uuid: UUID):
         """Activate an image by its UUID."""
         if uuid not in [img.uuid for img in self._images]:

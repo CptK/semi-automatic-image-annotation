@@ -283,6 +283,36 @@ class TestImageStore(unittest.TestCase):
         self.assertEqual(self.image_store._images, [])
         self.assertIsNone(self.image_store._current_uuid)
 
+    def test_change_image_annotation_invalid(self) -> None:
+        """Test changing a bounding box with an invalid index."""
+        with self.assertRaises(ValueError):
+            self.image_store.change_image_annotation(uuid4(), 0, [0.1, 0.1, 0.2])
+
+    def test_change_image_annotation_no_change(self) -> None:
+        """Test changing a bounding box without providing new values."""
+        with self.assertRaises(Warning):
+            self.image_store.change_image_annotation(self.image_store._images[0].uuid, 0)
+
+    def test_change_image_annotation(self) -> None:
+        """Test changing a bounding box."""
+        self.image_store.change_image_annotation(self.image_store._images[0].uuid, 0, [0.1, 0.1, 0.2, 0.2], 1)
+        self.ground_truth_img_list[0].init(self.mock_model)
+        self.ground_truth_img_list[0].change_box(0, [0.1, 0.1, 0.2, 0.2])
+        self.ground_truth_img_list[0].change_label(0, 1)
+        self._check_img_lists_equal(self.image_store._images, self.ground_truth_img_list)
+
+        self.image_store.jump_to(self.image_store._images[2].uuid)
+        self.image_store.change_image_annotation(self.image_store._images[2].uuid, 2, [0.0, 0.3, 0.8, 0.4])
+        self.ground_truth_img_list[2].init(self.mock_model)
+        self.ground_truth_img_list[2].change_box(2, [0.0, 0.3, 0.8, 0.4])
+        self._check_img_lists_equal(self.image_store._images, self.ground_truth_img_list)
+
+        self.image_store.jump_to(self.image_store._images[1].uuid)
+        self.image_store.change_image_annotation(self.image_store._images[1].uuid, 2, new_label_uid=0)
+        self.ground_truth_img_list[1].init(self.mock_model)
+        self.ground_truth_img_list[1].change_label(2, 0)
+        self._check_img_lists_equal(self.image_store._images, self.ground_truth_img_list)
+
     def test_activate_image(self) -> None:
         """Test activating an image."""
         self.image_store.activate_image(self.image_store._images[1].uuid)
