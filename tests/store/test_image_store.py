@@ -1,59 +1,15 @@
 """This module tests the image store."""
 
 import os
-import unittest
-from typing import cast
 from uuid import uuid4
 
-from annotator.model.mock_model import MockModel
-from annotator.store.classes_store import ClassesStore
 from annotator.store.image_store import ImageStore
 from annotator.store.single_image import SingleImage
+from tests.store.base_environment import TestEnvironment
 
 
-def _cast(obj: list[SingleImage] | list[str] | list[SingleImage | str]) -> list[SingleImage | str]:
-    return cast(list[SingleImage | str], obj)
-
-
-class TestImageStore(unittest.TestCase):
+class TestImageStore(TestEnvironment):
     """A class for testing the image store."""
-
-    def setUp(self) -> None:
-        self.class_store = ClassesStore(["class1", "class2", "class3"])
-        self.mock_bboxes = [
-            [0.1, 0.1, 0.2, 0.2],
-            [0.3, 0.3, 0.4, 0.4],
-            [0.5, 0.5, 0.6, 0.6],
-            [0.7, 0.7, 0.8, 0.8],
-        ]
-        self.mock_scores = [0.9, 0.8, 0.7, 1]
-        self.mock_labels = ["class3", "class1", "class2", "class3"]
-        self.img_size = (640, 640)
-        self.mock_model = MockModel(self.mock_bboxes, self.mock_labels, self.mock_scores, self.img_size)
-
-        self.base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "images"))
-        self.image_names = ["test_img_1.JPEG", "test_img_2.JPEG", "test_img_3.JPEG"]
-        self.additional_image_names = ["test_img_4.JPEG", "test_img_5.JPEG"]
-        self.additional_image_paths = [
-            os.path.join(self.base_path, img_name) for img_name in self.additional_image_names
-        ]
-        self.additional_images = [
-            SingleImage(os.path.join(self.base_path, img_name), img_name, self.class_store)
-            for img_name in self.additional_image_names
-        ]
-        self.image_paths = [os.path.join(self.base_path, img_name) for img_name in self.image_names]
-        self.images = [
-            SingleImage(img_path, os.path.basename(img_path), self.class_store)
-            for img_path in self.image_paths
-        ]
-
-        self.ground_truth_img_list = [
-            SingleImage(img_path, os.path.basename(img_path), self.class_store)
-            for img_path in self.image_paths
-        ]
-        self.ground_truth_img_list[0].init(self.mock_model)
-
-        self.image_store = ImageStore(self.class_store, self.mock_model, _cast(self.image_paths))
 
     def _check_img_lists_equal(self, img_list: list[SingleImage], true_img_list: list[SingleImage]) -> None:
         for img, true_img in zip(img_list, true_img_list):
@@ -77,7 +33,7 @@ class TestImageStore(unittest.TestCase):
         self.assertEqual(self.image_store._current_uuid, self.image_store._images[0].uuid)
 
     def test_add_images(self) -> None:
-        self.image_store = ImageStore(self.class_store, self.mock_model, _cast(self.images))
+        self.image_store = ImageStore(self.class_store, self.mock_model, self.cast(self.images))
         self._check_img_lists_equal(self.image_store._images, self.ground_truth_img_list)
         self.assertEqual(self.image_store._current_uuid, self.image_store._images[0].uuid)
 
@@ -97,7 +53,7 @@ class TestImageStore(unittest.TestCase):
     def test_add_multiple_image_paths(self) -> None:
         """Test adding multiple images by providing only their paths."""
         new_img_paths = [os.path.join(self.base_path, img_name) for img_name in self.additional_image_names]
-        self.image_store.add_images(_cast(new_img_paths))
+        self.image_store.add_images(self.cast(new_img_paths))
         new_imgs = [
             SingleImage(img_path, os.path.basename(img_path), self.class_store) for img_path in new_img_paths
         ]
@@ -110,7 +66,7 @@ class TestImageStore(unittest.TestCase):
             SingleImage(img_path, os.path.basename(img_path), self.class_store)
             for img_path in self.image_paths
         ]
-        self.image_store.add_images(_cast(new_imgs))
+        self.image_store.add_images(self.cast(new_imgs))
         ground_truth = self.ground_truth_img_list + new_imgs
         self._check_img_lists_equal(self.image_store._images, ground_truth)
 
@@ -127,7 +83,7 @@ class TestImageStore(unittest.TestCase):
     def test_add_from_empty_store(self) -> None:
         """Test adding images to an empty store."""
         self.image_store = ImageStore(self.class_store, self.mock_model)
-        self.image_store.add_images(_cast(self.images))
+        self.image_store.add_images(self.cast(self.images))
         self._check_img_lists_equal(self.image_store._images, self.ground_truth_img_list)
         self.assertEqual(self.image_store._current_uuid, self.image_store._images[0].uuid)
 
@@ -252,7 +208,7 @@ class TestImageStore(unittest.TestCase):
 
     def test_delete_not_consecutive(self) -> None:
         """Test deleting multiple images that are not consecutive."""
-        self.image_store.add_images(_cast(self.additional_image_paths))
+        self.image_store.add_images(self.cast(self.additional_image_paths))
         base_ground_truth = self.ground_truth_img_list + self.additional_images
 
         self.image_store.delete_images([self.image_store._images[1].uuid, self.image_store._images[3].uuid])
@@ -266,7 +222,7 @@ class TestImageStore(unittest.TestCase):
         self.assertEqual(self.image_store._current_uuid, self.image_store._images[0].uuid)
 
         self.setUp()
-        self.image_store.add_images(_cast(self.additional_image_paths))
+        self.image_store.add_images(self.cast(self.additional_image_paths))
         base_ground_truth = self.ground_truth_img_list + self.additional_images
         self.image_store._current_uuid = self.image_store._images[2].uuid
         self.image_store.delete_images([self.image_store._images[0].uuid, self.image_store._images[2].uuid])
@@ -412,7 +368,7 @@ class TestImageStore(unittest.TestCase):
     def test_get_img_names(self) -> None:
         """Test getting the image names."""
         self.assertEqual(self.image_store.image_names, self.image_names)
-        self.image_store.add_images(_cast(self.additional_image_paths))
+        self.image_store.add_images(self.cast(self.additional_image_paths))
         self.assertEqual(self.image_store.image_names, self.image_names + self.additional_image_names)
         self.image_store = ImageStore(self.class_store, self.mock_model)
         self.assertEqual(self.image_store.image_names, [])
@@ -434,7 +390,7 @@ class TestImageStore(unittest.TestCase):
     def test_len(self) -> None:
         """Test getting the number of images."""
         self.assertEqual(len(self.image_store), len(self.image_store._images))
-        self.image_store.add_images(_cast(self.additional_image_paths))
+        self.image_store.add_images(self.cast(self.additional_image_paths))
         self.assertEqual(len(self.image_store), len(self.image_store._images))
 
     def test_iter(self) -> None:

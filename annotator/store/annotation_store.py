@@ -1,11 +1,7 @@
 """This module provides a class for storing and managing annotations."""
 
 import json
-import os
-from typing import Literal, cast
-
-import yaml
-from PIL import Image
+from typing import cast
 
 from annotator.model.yolo_detection_model import YOLODetectionModel
 from annotator.store.classes_store import ClassesStore

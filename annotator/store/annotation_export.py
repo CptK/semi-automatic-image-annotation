@@ -1,19 +1,17 @@
 """Thid module contains functions for exporting annotations to different formats."""
 
+import json
+import os
+import random
 from io import TextIOWrapper
 from typing import Literal
 
-import json
-import os
 import yaml
-
 from PIL import Image
 
-import random
-
+from annotator.store.classes_store import ClassesStore
 from annotator.store.image_store import ImageStore
 from annotator.store.single_image import SingleImage
-from annotator.store.classes_store import ClassesStore
 
 
 def export(
@@ -85,8 +83,8 @@ def _export_csv(
                 label = class_store.get_name(label_uid)
                 center_x, center_y, width, height = box
                 file.write(
-                    f"{annotation.path}{delimiter}{annotation.name}{delimiter}{center_x}{delimiter}{center_y} \
-                    {delimiter}{width}{delimiter}{height}{delimiter}{label}{delimiter}{split}\n"
+                    f"{annotation.path}{delimiter}{annotation.name}{delimiter}{center_x}{delimiter} \
+                    {center_y}{delimiter}{width}{delimiter}{height}{delimiter}{label}{delimiter}{split}\n"
                 )
 
     with open(path, "w") as f:
@@ -112,7 +110,8 @@ def _export_json(path: str, train: list[SingleImage], test: list[SingleImage], c
 
     output = {"class_mapping": class_store.classes, "train": train_json, "test": test_json}
 
-    json.dump(output, open(path, "w"), indent=4)
+    with open(path, "w") as f:
+        json.dump(output, f, indent=4)
 
 
 def _export_yolo(path: str, train: list[SingleImage], test: list[SingleImage], class_store: ClassesStore):
@@ -132,13 +131,13 @@ def _export_yolo(path: str, train: list[SingleImage], test: list[SingleImage], c
     os.makedirs(os.path.join(path, "test", "images"), exist_ok=True)
     os.makedirs(os.path.join(path, "test", "labels"), exist_ok=True)
 
-    _process_yolo(path, train, "train")
-    _process_yolo(path, test, "test")
+    _process_yolo(path, train, class_store, "train")
+    _process_yolo(path, test, class_store, "test")
 
     # create a yaml config file
     data_yaml = {
-        "train": os.path.join(path, "train").replace("\\", "/"),
-        "val": os.path.join(path, "test").replace("\\", "/"),
+        "train": "../train/images",
+        "test": "../test/images",
         "nc": len(class_store.get_class_names()),
         "names": {i: label for i, label in enumerate(class_store.get_class_names())},
     }
@@ -157,9 +156,9 @@ def _process_yolo(path: str, raw_data: list[SingleImage], class_store: ClassesSt
         split: The split to process (train or test).
     """
     for i, data in enumerate(raw_data):
-        img: Image.Image = Image.open(data.path)
-        img = img.resize((640, 640))
-        img.save(os.path.join(path, split, "images", f"{i}.jpg"))
+        with Image.open(data.path) as img:
+            img = img.resize((640, 640))
+            img.save(os.path.join(path, split, "images", f"{i}.jpg"))
 
         with open(os.path.join(path, split, "labels", f"{i}.txt"), "w") as f:
             for box, label_uid in zip(data.boxes, data.label_uids):

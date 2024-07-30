@@ -20,9 +20,8 @@ class TestSingleImage(unittest.TestCase):
         )
         self.classes_store = ClassesStore(["none", "boat", "car"])
         self.img = SingleImage(self.img_path, self.img_name, self.classes_store)
-        img = Image.open(self.img.path)
-        self.img_size = img.size
-        img.close()
+        with Image.open(self.img_path) as img:
+            self.img_size = img.size
         self.model = MockModel([[0, 0, 100, 100]], ["boat"], None, self.img_size)
 
     def test_init(self):
