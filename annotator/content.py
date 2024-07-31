@@ -183,24 +183,23 @@ class Content(ctk.CTkFrame):
 
     def new_image(self) -> None:
         """Load a new image into the content area."""
+        current_img = self.controller.current()
+
         try:
-            self.image_content = ImageContent(
-                self.controller.current_file_path(), (self.available_width, self.available_height)
-            )
+            if not current_img:
+                raise Exception("No image available to load.")
+
+            self.image_content = ImageContent(current_img.path, (self.available_width, self.available_height))
             self.canvas.config(width=self.image_content.img_width, height=self.image_content.img_height)
             self.canvas.create_image(0, 0, anchor="nw", image=self.image_content)
             self.canvas.lower(self.image_content)
 
         except Exception as e:
-            print(f"Failed to load image {self.controller.current_file_path()}: {e}")
+            if current_img:
+                print(f"Failed to load image {current_img.path}: {e}")
+            else:
+                print("No image available to load.")
             self.canvas.delete("all")
-            self.canvas.create_text(
-                0,
-                0,
-                text=f"Failed to load image {self.controller.current_file_path()}",
-                fill="red",
-                font=("Arial", 24),
-            )
 
     def relative_to_canvas_coords(
         self, box: tuple[float, float, float, float]
@@ -267,20 +266,26 @@ class Content(ctk.CTkFrame):
         self.canvas.delete("bbox")
         self.canvas.delete("handle")
         self.bboxes = []
+        current_img = self.controller.current()
 
-        for i, (box, label_uid) in enumerate(
-            zip(self.controller.current_boxes(), self.controller.current_label_uids())
-        ):
+        if not current_img:
+            return
+
+        for i, (box, label_uid) in enumerate(zip(current_img.boxes, current_img.label_uids)):
             box = self.relative_to_canvas_coords(box)
-            on_resize_end_callback = lambda idx=i: self.controller.change_box(  # noqa: E731
-                idx, self.canvas_to_relative_coords(self.bboxes[idx].get_box()), redraw=False
+            on_resize_end_callback = lambda idx=i: self.controller.change_image_annotation(  # noqa: E731
+                idx, self.canvas_to_relative_coords(self.bboxes[idx].get_box()), None, redraw=False
             )
             bbox = BoundingBox(self.canvas, box, label_uid, self.controller, on_resize_end_callback, i)
             self.bboxes.append(bbox)
 
     def _update_bounding_boxes(self) -> None:
         """Update the bounding boxes for the current image."""
-        for bbox, box in zip(self.bboxes, self.controller.current_boxes()):
+        current_img = self.controller.current()
+        if not current_img:
+            return
+
+        for bbox, box in zip(self.bboxes, current_img.boxes):
             box = self.relative_to_canvas_coords(box)
             bbox.update(box)
         self.canvas.tag_raise("bbox")
@@ -339,8 +344,11 @@ class Content(ctk.CTkFrame):
             for bbox in self.bboxes:
                 bbox.end_resize()
         elif self.state == self.EventState.DRAWING:
-            on_resize_end_callback = lambda: self.controller.change_box(  # noqa: E731
-                len(self.bboxes) - 1, self.canvas_to_relative_coords(self.bboxes[-1].get_box()), redraw=False
+            on_resize_end_callback = lambda: self.controller.change_image_annotation(  # noqa: E731
+                len(self.bboxes) - 1,
+                self.canvas_to_relative_coords(self.bboxes[-1].get_box()),
+                None,
+                redraw=False,
             )
             self.bboxes[-1].on_resize_end_callback = on_resize_end_callback
             self.bboxes[-1].end_resize()

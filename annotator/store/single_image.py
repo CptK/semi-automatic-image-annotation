@@ -81,7 +81,7 @@ class SingleImage:
         self.boxes.pop(idx)
         self.label_uids.pop(idx)
 
-    def change_box(self, idx: int, box: list[float]) -> None:
+    def change_box(self, idx: int, box: list[float] | tuple[float, float, float, float]) -> None:
         """Change the coordinates of a bounding box in the image.
 
         Args:

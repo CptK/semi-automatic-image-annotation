@@ -84,7 +84,11 @@ class ImageStore:
                 self._current_uuid = None
 
     def change_image_annotation(
-        self, uuid: UUID, box_idx: int, new_box: list[float] | None = None, new_label_uid: int | None = None
+        self,
+        uuid: UUID,
+        box_idx: int,
+        new_box: list[float] | tuple[float, float, float, float] | None = None,
+        new_label_uid: int | None = None,
     ):
         """Change the annotation of a bounding box in an image.
 
