@@ -7,8 +7,8 @@ from ultralytics import YOLO
 
 from annotator.annotation_ui import ImageAnnotationGUI
 from annotator.controller import Controller
-from annotator.store.single_image import SingleImage
 from annotator.model.yolo_detection_model import YOLODetectionModel
+from annotator.store.single_image import SingleImage
 
 
 def main():

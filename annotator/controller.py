@@ -3,12 +3,12 @@
 from typing import Any, Literal, cast
 from uuid import UUID
 
-from annotator.ui import UI
 from annotator.model.base_model import DetectionModel
 from annotator.store.annotation_export import export
 from annotator.store.classes_store import ClassesStore
 from annotator.store.image_store import ImageStore
 from annotator.store.single_image import SingleImage
+from annotator.ui import UI
 
 
 class Controller:
@@ -114,12 +114,12 @@ class Controller:
         """Change the annotation for the *current* image at the given index."""
         self._img_store.change_image_annotation(self.active_uuid(), idx, box, label_uid)
         if redraw:
-            self._view.redraw_content(only_boxes=True)
+            self._view.redraw_content(only_boxes=True)  # type: ignore
 
     def delete(self, idx: int):
         """Delete the label for the bounding box at the given index."""
         self._img_store.active_image.delete_box(idx)  # type: ignore
-        self._view.redraw_content(only_boxes=True)
+        self._view.redraw_content(only_boxes=True)  # type: ignore
 
     def class_iter(self):
         """Iterate over the available classes."""
@@ -136,7 +136,7 @@ class Controller:
         self._img_store.remove_label(uid, change_classes_uid)
         self._class_store.delete_class(uid)
         if redraw:
-            self._view.redraw_content(only_boxes=True)
+            self._view.redraw_content(only_boxes=True)  # type: ignore
 
     def set_default_class_uid(self, uid: int) -> None:
         """Set the default class uid."""
@@ -162,7 +162,7 @@ class Controller:
     def change_class_color(self, uid: int, color: str) -> None:
         """Change the color of a class."""
         self._class_store.change_color(uid, color)
-        self._view.redraw_content(only_boxes=True)
+        self._view.redraw_content(only_boxes=True)  # type: ignore
 
     def change_class_name(self, uid: int | list[int], name: str | list[str]) -> None:
         """Change the name of a class or a list of classes.
@@ -172,7 +172,7 @@ class Controller:
             name: The new name for the class or a list of new names.
         """
         self._class_store.change_name(uid, name)
-        self._view.redraw_content(only_boxes=True)
+        self._view.redraw_content(only_boxes=True)  # type: ignore
         self._view.refresh_right_sidebar()
 
     def get_class_color(self, uid: int) -> str:
