@@ -88,7 +88,7 @@ concurrency = ["multiprocessing"]
 branch = true
 
 [tool.coverage.report]
-fail_under = 5.00
+fail_under = 45.00
 precision = 2
 show_missing = true
 exclude_lines = [
