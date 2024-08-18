@@ -138,7 +138,7 @@ class ClassesStore:
         if len(uid) != len(name):
             raise ValueError("Number of UIDs and names do not match.")
 
-        if any(n in self.get_class_names() for n in name):
+        if any(n in [cls["name"] for cls in self.classes if cls["uid"] != u] for n, u in zip(name, uid)):
             raise ValueError("Class with the same name already exists.")
 
         if len(set(name)) != len(name):

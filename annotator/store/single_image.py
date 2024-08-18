@@ -72,7 +72,7 @@ class SingleImage:
         """
         self.label_uids[idx] = label_uid
 
-    def delete(self, idx: int) -> None:
+    def delete_box(self, idx: int) -> None:
         """Delete a bounding box from the image.
 
         Args:
@@ -80,6 +80,20 @@ class SingleImage:
         """
         self.boxes.pop(idx)
         self.label_uids.pop(idx)
+
+    def change_box(self, idx: int, box: list[float] | tuple[float, float, float, float]) -> None:
+        """Change the coordinates of a bounding box in the image.
+
+        Args:
+            idx: The index of the bounding box to change.
+            box: The new bounding box coordinates as a list with entries [center_x, center_y, width, height].
+
+        Raises:
+            ValueError: If the bounding box does not have four entries.
+        """
+        if len(box) != 4:
+            raise ValueError("Bounding box must have four entries.")
+        self.boxes[idx] = box
 
     def add_box(self, box, label_uid: int):
         """Add a bounding box to the image."""

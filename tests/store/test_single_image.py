@@ -20,9 +20,8 @@ class TestSingleImage(unittest.TestCase):
         )
         self.classes_store = ClassesStore(["none", "boat", "car"])
         self.img = SingleImage(self.img_path, self.img_name, self.classes_store)
-        img = Image.open(self.img.path)
-        self.img_size = img.size
-        img.close()
+        with Image.open(self.img_path) as img:
+            self.img_size = img.size
         self.model = MockModel([[0, 0, 100, 100]], ["boat"], None, self.img_size)
 
     def test_init(self):
@@ -80,12 +79,23 @@ class TestSingleImage(unittest.TestCase):
     def test_delete_box(self):
         self.img.add_box([0.1, 0.1, 0.2, 0.2], 1)
         self.img.add_box([0.3, 0.3, 0.4, 0.4], 0)
-        self.img.delete(0)
+        self.img.delete_box(0)
         self.assertEqual(self.img.boxes, [[0.3, 0.3, 0.4, 0.4]])
         self.assertEqual(self.img.label_uids, [0])
-        self.img.delete(0)
+        self.img.delete_box(0)
         self.assertEqual(self.img.boxes, [])
         self.assertEqual(self.img.label_uids, [])
+
+    def test_change_box(self):
+        self.img.add_box([0.1, 0.1, 0.2, 0.2], 1)
+        self.img.change_box(0, [0.3, 0.3, 0.4, 0.4])
+        self.assertEqual(self.img.boxes, [[0.3, 0.3, 0.4, 0.4]])
+        self.assertEqual(self.img.label_uids, [1])
+
+    def test_change_box_invalid(self):
+        self.img.add_box([0.1, 0.1, 0.2, 0.2], 1)
+        with self.assertRaises(ValueError):
+            self.img.change_box(0, [0.3, 0.3, 0.4])
 
     def test_labels_to_uids(self):
         self.assertEqual(self.img.labels_to_uids([]), [])
