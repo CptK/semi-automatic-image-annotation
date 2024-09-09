@@ -295,7 +295,9 @@ class TestExportYOLO(TestExportBase):
                                 "label": int(line.split(" ")[0]),
                             }
                         )
-        return pd.DataFrame(lines)
+        df = pd.DataFrame(lines)
+        df = df.sort_values(by=["path", "label"]).reset_index(drop=True)
+        return df
 
     def _ground_truth_to_df(self, ground_truth: list[SingleImage], seed: int, split: float) -> pd.DataFrame:
         """Convert the ground truth list of images to a DataFrame."""
@@ -324,6 +326,7 @@ class TestExportYOLO(TestExportBase):
         lines = process(train, "train")
         lines.extend(process(test, "test"))
         df = pd.DataFrame(lines)
+        df = df.sort_values(by=["path", "label"]).reset_index(drop=True)
         return df
 
     def test_all(self) -> None:
