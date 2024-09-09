@@ -1,6 +1,7 @@
 """Left sidebar for the annotator GUI."""
 
 import os
+from pathlib import Path
 from collections.abc import Callable
 from tkinter import filedialog
 from uuid import UUID
@@ -10,6 +11,8 @@ from PIL import Image
 
 from annotator.controller import Controller
 
+CURRENT_DIR = Path(__file__).parent
+ASSETS_DIR = CURRENT_DIR.parent / "assets"
 
 class ListButton(ctk.CTkButton):
     """Button for the left sidebar list items.
@@ -164,7 +167,7 @@ class LeftSidebar(ctk.CTkFrame):
 
         self.add_images_button = ctk.CTkButton(
             self.button_frame,
-            image=ctk.CTkImage(Image.open("./assets/add_image.png").resize((40, 40))),
+            image=ctk.CTkImage(Image.open(ASSETS_DIR / "add_image.png").resize((40, 40))),
             compound="left",
             command=self._select_images,
             fg_color="transparent",
@@ -177,7 +180,7 @@ class LeftSidebar(ctk.CTkFrame):
 
         self.add_directory_button = ctk.CTkButton(
             self.button_frame,
-            image=ctk.CTkImage(Image.open("./assets/new_folder.png").resize((40, 40))),
+            image=ctk.CTkImage(Image.open(ASSETS_DIR / "new_folder.png").resize((40, 40))),
             compound="left",
             command=self._select_directory,
             fg_color="transparent",

@@ -15,7 +15,7 @@ def main():
     yolo_model = YOLO("yolov8m.pt")  # Load the YOLO model
     model = YOLODetectionModel(yolo_model, ["none", "buoy", "boat"])  # Create a detection model
     base_path = r"C:\Users\m-kor\OneDrive\Bilder\Buoys"
-    image_paths = [os.path.join(base_path, image) for image in os.listdir(base_path)]
+    image_paths = [os.path.join(base_path, image) for image in os.listdir(base_path) if image.lower().endswith((".jpg", ".jpeg", ".png"))]
     controller = Controller(["none", "buoy", "boat"], model, cast(list[SingleImage | str], image_paths))
     app = ImageAnnotationGUI(controller)
     controller.set_view(app)
