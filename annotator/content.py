@@ -308,6 +308,9 @@ class Content(ctk.CTkFrame):
 
     def _on_mouse_click(self, event) -> None:
         """Handle the mouse click event."""
+        if not self.controller.current():  # do not allow drawing on empty image
+            return
+
         for bbox in self.bboxes:
             handle = bbox.get_handle_at(event.x, event.y)
             if handle:
