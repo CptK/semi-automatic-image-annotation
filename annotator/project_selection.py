@@ -1,290 +1,237 @@
 import json
-from pathlib import Path
-from tkinter import filedialog
-from typing import Callable
+import math
+import os
+from collections.abc import Callable
+from typing import Any
 
 import customtkinter as ctk
+from ultralytics import YOLO
 
-class ProjectSelectionDialog(ctk.CTkToplevel):
-    """Initial dialog for selecting between creating a new project or opening an existing one."""
-    
-    def __init__(self, parent, callback: Callable[[dict], None], **kwargs):
-        super().__init__(parent, **kwargs)
-        self.title("Project Selection")
-        self.callback = callback
-        
-        # Make dialog modal
-        self.transient(parent)
-        self.grab_set()
-        
-        # Center the dialog
-        self.geometry("400x500")
-        self.resizable(False, False)
-        
-        self._create_widgets()
-        self._load_recent_projects()
+from annotator.controller import Controller
+from annotator.model.yolo_detection_model import YOLODetectionModel
+from annotator.new_project_window import NewProjectWindow
+from annotator.store.project_manager import load_project, save_project
 
-    def _create_widgets(self):
-        # Title
-        title = ctk.CTkLabel(self, text="Select Project", font=("Helvetica", 20))
-        title.pack(pady=20)
-        
-        # New Project Button
-        new_project_btn = ctk.CTkButton(
-            self, 
-            text="Create New Project", 
-            command=self._create_new_project,
-            height=40
+
+class ProjectSelector(ctk.CTkFrame):
+    def __init__(self, master: ctk.CTk, on_project_selected: Callable, **kwargs) -> None:
+        super().__init__(master, **kwargs)
+        self.on_project_selected = on_project_selected
+
+        self.project_config_file = "project_config.json"
+        if not os.path.exists(self.project_config_file):
+            with open(self.project_config_file, "w") as f:
+                f.write("[]")
+
+        # Constants for sizing
+        self.CARD_SIZE = 180  # Size of each card (width and height)
+        self.CARD_SPACING = 20  # Spacing between cards
+
+        # Configure the main frame
+        self.configure(fg_color="#1e1e1e")
+
+        # Wait for the window to be ready
+        self.update_idletasks()
+
+        # Create and configure the title label
+        self.title_label = ctk.CTkLabel(self, text="Projects", font=("Arial Bold", 28), text_color="#ffffff")
+        self.title_label.pack(pady=(20, 30), padx=20, anchor="w")
+
+        # Create scrollable container for the grid
+        self.grid_container = ctk.CTkScrollableFrame(
+            self,
+            fg_color="#1e1e1e",
         )
-        new_project_btn.pack(pady=10, padx=20, fill="x")
-        
-        # Open Project Button
-        open_project_btn = ctk.CTkButton(
-            self, 
-            text="Open Existing Project", 
-            command=self._open_project,
-            height=40
+        self.grid_container.pack(fill="both", expand=True, padx=20)
+
+        # Wait for container to be ready
+        self.update_idletasks()
+
+        # Display initial projects
+        self.after(100, lambda: self.display_projects(self.load_recent_projects()))
+
+        # Add resize handler with delay
+        self._resize_after_id = None
+        self.master.bind("<Configure>", self.on_resize)
+
+    def unbind_resize(self):
+        """Unbind resize event"""
+        self.master.unbind("<Configure>")
+
+    def create_project_card(
+        self, parent: ctk.CTkFrame, project_data: dict[str, str] | None = None, is_new_button: bool = False
+    ) -> ctk.CTkFrame:
+        """Create a card for either a project or the new project button"""
+        # Create main frame with fixed size
+        frame = ctk.CTkFrame(
+            parent, fg_color="#2a2a2a", width=self.CARD_SIZE, height=self.CARD_SIZE, corner_radius=8
         )
-        open_project_btn.pack(pady=10, padx=20, fill="x")
-        
-        # Recent Projects Section
-        recent_label = ctk.CTkLabel(self, text="Recent Projects", font=("Helvetica", 16))
-        recent_label.pack(pady=(20, 10))
-        
-        self.recent_frame = ctk.CTkScrollableFrame(self, height=200)
-        self.recent_frame.pack(pady=10, padx=20, fill="x")
+        frame.grid_propagate(False)  # Prevent size changes
 
-    def _load_recent_projects(self):
-        # TODO: Load from a config file
-        recent_projects = []
-        if (Path.home() / ".image_annotator" / "recent_projects.json").exists():
-            with open(Path.home() / ".image_annotator" / "recent_projects.json") as f:
-                recent_projects = json.load(f)
-        
-        for project in recent_projects:
-            self._add_recent_project_button(project)
-
-    def _add_recent_project_button(self, project_info: dict):
-        btn = ctk.CTkButton(
-            self.recent_frame,
-            text=f"{project_info['name']} ({project_info['path']})",
-            command=lambda: self._open_recent_project(project_info),
+        # Create content (plus sign or empty space)
+        content = ctk.CTkLabel(
+            frame,
+            text="+" if is_new_button else "",
+            font=("Arial Bold", 48) if is_new_button else None,
+            text_color="#00b4d8" if is_new_button else "#ffffff",
+            fg_color="#1a1a1a",
+            corner_radius=4,
+            width=self.CARD_SIZE - 20,
+            height=self.CARD_SIZE - 60,
         )
-        btn.pack(pady=5, fill="x")
+        content.place(relx=0.5, rely=0.4, anchor="center")
 
-    def _create_new_project(self):
-        self.withdraw()
-        ProjectCreationDialog(self, self.callback)
+        # Add text label
+        text = "New Project" if is_new_button else project_data["project_name"]
+        text_label = ctk.CTkLabel(frame, text=text, font=("Arial", 13), text_color="#ffffff")
+        text_label.place(relx=0.5, rely=0.85, anchor="center")
 
-    def _open_project(self):
-        path = filedialog.askdirectory(title="Select Project Directory")
-        if path:
-            self.callback({"action": "open", "path": path})
-            self.destroy()
+        # Store command
+        command = self.new_project if is_new_button else lambda p=project_data: self.open_project(p)
 
-    def _open_recent_project(self, project_info: dict):
-        self.callback({"action": "open", "path": project_info["path"]})
-        self.destroy()
+        # Bind events
+        def on_enter(e):
+            frame.configure(fg_color="#3a3a3a")
 
+        def on_leave(e):
+            frame.configure(fg_color="#2a2a2a")
 
-class ClassDefinitionFrame(ctk.CTkFrame):
-    """Frame for defining classes during project creation."""
-    
-    def __init__(self, parent, **kwargs):
-        super().__init__(parent, **kwargs)
-        self.class_entries = []
-        self._create_widgets()
+        for widget in [frame, content, text_label]:
+            widget.bind("<Button-1>", lambda e, c=command: c())
+            widget.bind("<Enter>", on_enter)
+            widget.bind("<Leave>", on_leave)
 
-    def _create_widgets(self):
-        # Header
-        header = ctk.CTkFrame(self)
-        header.pack(fill="x", padx=5, pady=5)
-        
-        ctk.CTkLabel(header, text="Class Name").pack(side="left", expand=True)
-        ctk.CTkLabel(header, text="Color").pack(side="left", padx=10)
-        ctk.CTkLabel(header, text="Default").pack(side="left", padx=10)
-        ctk.CTkLabel(header, text="").pack(side="left", width=30)  # Spacing for delete button
-        
-        self.classes_frame = ctk.CTkScrollableFrame(self, height=200)
-        self.classes_frame.pack(fill="x", expand=True, padx=5)
-        
-        # Add initial class
-        self._add_class()
-        
-        # Add button
-        add_btn = ctk.CTkButton(self, text="Add Class", command=self._add_class)
-        add_btn.pack(pady=10)
+        return frame
 
-    def _add_class(self):
-        frame = ctk.CTkFrame(self.classes_frame)
-        frame.pack(fill="x", pady=2)
-        
-        name = ctk.CTkEntry(frame)
-        name.pack(side="left", expand=True)
-        
-        color = ctk.CTkButton(
-            frame, 
-            text="", 
-            width=30,
-            command=lambda: self._choose_color(color)
-        )
-        color.configure(fg_color="red")  # Default color
-        color.pack(side="left", padx=10)
-        
-        is_default = ctk.CTkCheckBox(frame, text="")
-        is_default.pack(side="left", padx=10)
-        
-        delete_btn = ctk.CTkButton(
-            frame, 
-            text="X", 
-            width=30,
-            command=lambda: self._delete_class(frame)
-        )
-        delete_btn.pack(side="left", padx=5)
-        
-        self.class_entries.append((frame, name, color, is_default))
+    def calculate_grid_dimensions(self, container_width: int) -> tuple[int, int]:
+        """Calculate the number of rows and columns based on container width"""
+        # Calculate how many cards can fit in a row
+        total_card_width = self.CARD_SIZE + self.CARD_SPACING
+        num_columns = max(1, (container_width - self.CARD_SPACING) // total_card_width)
 
-    def _choose_color(self, button):
-        color = ctk.CTkColorChooser.ask_color()
-        if color:
-            button.configure(fg_color=color)
+        # Calculate number of rows needed
+        total_items = len(self.load_recent_projects()) + 1  # +1 for new project button
+        num_rows = math.ceil(total_items / num_columns)
 
-    def _delete_class(self, frame):
-        if len(self.class_entries) > 1:  # Keep at least one class
-            frame.destroy()
-            self.class_entries = [(f, n, c, d) for (f, n, c, d) in self.class_entries if f != frame]
+        return num_rows, num_columns
 
-    def get_classes(self) -> list[dict]:
-        classes = []
-        for _, name, color, is_default in self.class_entries:
-            if name.get().strip():  # Only include classes with names
-                classes.append({
-                    "name": name.get().strip(),
-                    "color": color.cget("fg_color"),
-                    "default": is_default.get()
-                })
-        return classes
+    def on_destroy(self, event=None):
+        """Handle widget destruction"""
+        if event.widget == self:
+            self._is_destroyed = True
+            if hasattr(self, "_resize_after_id") and self._resize_after_id:
+                self.after_cancel(self._resize_after_id)
+            self.master.unbind("<Configure>")
 
-
-class ProjectCreationDialog(ctk.CTkToplevel):
-    """Dialog for creating a new project."""
-    
-    def __init__(self, parent, callback: Callable[[dict], None], **kwargs):
-        super().__init__(parent, **kwargs)
-        self.title("Create New Project")
-        self.callback = callback
-        
-        # Make dialog modal
-        self.transient(parent)
-        self.grab_set()
-        
-        # Center the dialog
-        self.geometry("600x800")
-        self.resizable(False, False)
-        
-        self._create_widgets()
-
-    def _create_widgets(self):
-        # Project Details
-        details_frame = ctk.CTkFrame(self)
-        details_frame.pack(fill="x", padx=20, pady=10)
-        
-        ctk.CTkLabel(details_frame, text="Project Name:").pack(anchor="w", pady=5)
-        self.name_entry = ctk.CTkEntry(details_frame)
-        self.name_entry.pack(fill="x", pady=5)
-        
-        ctk.CTkLabel(details_frame, text="Project Location:").pack(anchor="w", pady=5)
-        
-        path_frame = ctk.CTkFrame(details_frame)
-        path_frame.pack(fill="x", pady=5)
-        
-        self.path_entry = ctk.CTkEntry(path_frame)
-        self.path_entry.pack(side="left", fill="x", expand=True)
-        
-        browse_btn = ctk.CTkButton(
-            path_frame, 
-            text="Browse", 
-            command=self._browse_location,
-            width=100
-        )
-        browse_btn.pack(side="right", padx=5)
-        
-        ctk.CTkLabel(details_frame, text="Description:").pack(anchor="w", pady=5)
-        self.description_entry = ctk.CTkTextbox(details_frame, height=100)
-        self.description_entry.pack(fill="x", pady=5)
-        
-        # Image Handling
-        image_frame = ctk.CTkFrame(self)
-        image_frame.pack(fill="x", padx=20, pady=10)
-        
-        ctk.CTkLabel(image_frame, text="Image Handling:").pack(anchor="w", pady=5)
-        self.image_handling = ctk.CTkOptionMenu(
-            image_frame,
-            values=["Copy images to project", "Reference original images"]
-        )
-        self.image_handling.pack(fill="x", pady=5)
-        
-        # Class Definition
-        class_frame = ctk.CTkFrame(self)
-        class_frame.pack(fill="x", padx=20, pady=10)
-        
-        ctk.CTkLabel(class_frame, text="Define Classes:").pack(anchor="w", pady=5)
-        self.class_definition = ClassDefinitionFrame(class_frame)
-        self.class_definition.pack(fill="both", expand=True, pady=5)
-        
-        # Buttons
-        button_frame = ctk.CTkFrame(self)
-        button_frame.pack(fill="x", padx=20, pady=20)
-        
-        ctk.CTkButton(
-            button_frame,
-            text="Cancel",
-            command=self._cancel,
-            width=100
-        ).pack(side="left", padx=5)
-        
-        ctk.CTkButton(
-            button_frame,
-            text="Create Project",
-            command=self._create_project,
-            width=100
-        ).pack(side="right", padx=5)
-
-    def _browse_location(self):
-        path = filedialog.askdirectory(title="Select Project Location")
-        if path:
-            self.path_entry.delete(0, "end")
-            self.path_entry.insert(0, path)
-
-    def _cancel(self):
-        parent = self.master
-        self.destroy()
-        parent.deiconify()
-
-    def _create_project(self):
-        # Validate inputs
-        if not self.name_entry.get().strip():
-            # TODO: Show error
+    def on_resize(self, event) -> None:
+        """Handle window resize events"""
+        if event.widget != self.master:  # Only respond to main window resize
             return
-            
-        if not self.path_entry.get().strip():
-            # TODO: Show error
-            return
-            
-        classes = self.class_definition.get_classes()
-        if not classes:
-            # TODO: Show error
-            return
-            
-        # Prepare project info
-        project_info = {
-            "action": "create",
-            "name": self.name_entry.get().strip(),
-            "path": self.path_entry.get().strip(),
-            "description": self.description_entry.get("1.0", "end").strip(),
-            "image_handling": "copy" if self.image_handling.get() == "Copy images to project" else "reference",
-            "classes": classes
-        }
-        
-        self.callback(project_info)
-        self.destroy()
+
+        if self._resize_after_id:
+            self.after_cancel(self._resize_after_id)
+
+        # Schedule layout update with delay to prevent too frequent updates
+        self._resize_after_id = self.after(10, lambda: self.display_projects(self.load_recent_projects()))
+
+    def display_projects(self, projects: list[dict[str, str]]) -> None:
+        """Display projects in a grid layout"""
+        # Clear existing widgets
+        for widget in self.grid_container.winfo_children():
+            widget.destroy()
+
+        # Get the master window width
+        master_width = self.winfo_toplevel().winfo_width()
+        # Account for main frame padding and scrollbar
+        container_width = master_width - 100  # 40px for padx=20 on each side + 20px for scrollbar
+
+        num_rows, num_cols = self.calculate_grid_dimensions(container_width)
+
+        # Configure grid columns with equal spacing but no weight
+        for i in range(num_cols):
+            self.grid_container.grid_columnconfigure(i, weight=0)
+
+        # Create and arrange all cards
+        all_items = [{"is_new": True}] + projects
+
+        for idx, item in enumerate(all_items):
+            row = idx // num_cols
+            col = idx % num_cols
+
+            if item.get("is_new"):
+                card = self.create_project_card(self.grid_container, is_new_button=True)
+            else:
+                card = self.create_project_card(self.grid_container, item)
+
+            # Calculate x position to center cards
+            total_width = (num_cols * self.CARD_SIZE) + ((num_cols - 1) * self.CARD_SPACING)
+            remaining_space = container_width - total_width
+            extra_padding = remaining_space // 2 if remaining_space > 0 else 0
+
+            # Place card in grid without stretching
+            card.grid(
+                row=row,
+                column=col,
+                padx=(self.CARD_SPACING // 2 + (extra_padding if col == 0 else 0), self.CARD_SPACING // 2),
+                pady=self.CARD_SPACING // 2,
+                sticky="",  # No sticky parameter means no stretching
+            )
+
+    def load_recent_projects(self) -> list[dict[str, str]]:
+        """Load recent projects data"""
+        with open(self.project_config_file) as f:
+            return json.load(f)
+
+    def new_project(self) -> None:
+        """Handle new project creation by opening the new project window."""
+
+        def handle_project_creation(project_data: dict[str, Any], controller: Controller) -> None:
+            """Handle the creation of a new project from the project data."""
+            save_project(
+                project_path=project_data["project_path"],
+                image_store=project_data["image_store"],
+                class_store=project_data["class_store"],
+                project_name=project_data["project_name"],
+                description=project_data["description"],
+            )
+
+            controller.initialize_project(project_data)
+
+            # Save the project data to the recent projects list
+            recent_projects = self.load_recent_projects()
+            recent_projects.append(
+                {"project_name": project_data["project_name"], "project_path": project_data["project_path"]}
+            )
+            with open(self.project_config_file, "w") as f:
+                json.dump(recent_projects, f, indent=4)
+
+            # After creating the project, refresh the project list
+            self.display_projects(self.load_recent_projects())
+            self.open_project(project_data)
+
+        # Create a new controller instance for the new project
+        yolo_model = YOLO("yolov8m.pt")  # Load the YOLO model
+        model = YOLODetectionModel(yolo_model, ["none", "buoy", "boat"])  # Create a detection model
+        controller = Controller(["none"], model, [])
+
+        # Open the new project window
+        NewProjectWindow(self, controller, handle_project_creation)
+
+    def open_project(self, project: dict[str, str]) -> None:
+        """Handle opening an existing project"""
+        project_path = project["project_path"]
+        config = load_project(project_path)
+        controller = Controller(
+            classes=config["class_store"],
+            detection_model=config["detection_model"],
+            initial_images=config["image_store"],
+        )
+        controller.initialize_project(config)
+
+        # set the selected project to the first project in the list
+        recent_projects = self.load_recent_projects()
+        recent_projects.insert(0, recent_projects.pop(recent_projects.index(project)))
+        with open(self.project_config_file, "w") as f:
+            json.dump(recent_projects, f, indent=4)
+
+        self.on_project_selected(controller)

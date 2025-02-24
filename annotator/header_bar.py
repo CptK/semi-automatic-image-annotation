@@ -2,12 +2,17 @@
 
 import os
 from collections.abc import Callable
+from pathlib import Path
 from tkinter import DoubleVar, StringVar, filedialog
 
 import customtkinter as ctk
+from PIL import Image
 
 from annotator.classes_popup import ClassesPopup
 from annotator.controller import Controller
+
+CURRENT_DIR = Path(__file__).parent
+ASSETS_DIR = CURRENT_DIR.parent / "assets"
 
 
 class ExportPopup(ctk.CTkToplevel):
@@ -154,6 +159,25 @@ class HeaderBar(ctk.CTkFrame):
     def __init__(self, master, controller: Controller, **kwargs) -> None:
         super().__init__(master, **kwargs)
 
+        self._save_icon = ctk.CTkImage(Image.open(ASSETS_DIR / "save.png").resize((50, 50)))
+        self._save_with_star_icon = ctk.CTkImage(
+            Image.open(ASSETS_DIR / "save_with_star.png").resize((50, 50))
+        )
+
+        self.save_button = ctk.CTkButton(
+            self,
+            image=self._save_icon,
+            compound="left",
+            command=self._save,
+            fg_color="transparent",
+            bg_color="transparent",
+            text_color="white",
+            text="",
+            height=40,
+            width=40,
+        )
+        self.save_button.pack(side="left", fill="none", padx=5, pady=5)
+
         self.export_button = ctk.CTkButton(self, text="Export", command=self._export)
         self.export_button.pack(side="left", padx=10)
         self.controller = controller
@@ -179,6 +203,15 @@ class HeaderBar(ctk.CTkFrame):
         popup = ClassesPopup(self.master, self.controller)
         self.wait_window(popup)
 
+    def _save(self):
+        self.controller.save_project()
+
     def _change_appearance_mode_event(self, new_appearance_mode: str) -> None:
         """Change the appearance mode of the application."""
         ctk.set_appearance_mode(new_appearance_mode)
+
+    def update(self):
+        if self.controller.changes_made():
+            self.save_button.configure(image=self._save_with_star_icon)
+        else:
+            self.save_button.configure(image=self._save_icon)

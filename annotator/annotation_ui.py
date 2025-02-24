@@ -38,10 +38,8 @@ class ImageAnnotationGUI(UI):
     HEADER_BAR_HEIGHT = 50
     SIDEBAR_WIDTH = 200
 
-    def __init__(self, controller: Controller) -> None:
-        super().__init__()
-        self.title("YOLO Image Annotation Tool")
-        self.geometry(f"{self.INITIAL_WIDTH}x{self.INITIAL_HEIGHT}")
+    def __init__(self, master: ctk.CTk, controller: Controller) -> None:
+        super().__init__(master)
 
         self.controller = controller
 
@@ -83,3 +81,7 @@ class ImageAnnotationGUI(UI):
     def refresh_right_sidebar(self) -> None:
         """Refresh the right sidebar."""
         self.right_sidebar.update()
+
+    def refresh_headerbar(self) -> None:
+        """Refresh the header bar."""
+        self.header.update()

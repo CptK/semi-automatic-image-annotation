@@ -1,8 +1,8 @@
 """Left sidebar for the annotator GUI."""
 
 import os
-from pathlib import Path
 from collections.abc import Callable
+from pathlib import Path
 from tkinter import filedialog
 from uuid import UUID
 
@@ -13,6 +13,7 @@ from annotator.controller import Controller
 
 CURRENT_DIR = Path(__file__).parent
 ASSETS_DIR = CURRENT_DIR.parent / "assets"
+
 
 class ListButton(ctk.CTkButton):
     """Button for the left sidebar list items.
